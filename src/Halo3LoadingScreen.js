@@ -56,33 +56,30 @@ let frag_particle = `#version 300 es
 let frag_position_initial = `#version 300 es
 	precision mediump float;
 
-	uniform sampler2D u_pos;  // initial position texture
-	uniform sampler2D u_data; // data texture
+    // Input Variables
+	uniform sampler2D texture_initial_position;
+	uniform sampler2D texture_data;
 	in vec2 v_coord;
 
+    // Output Variables
 	out vec4 cg_FragColor; 
 
+    // Define Random Function
 	float random(vec2 p) {
     	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
 	}
 
 	void main() {
-		vec3 pos = texture(u_pos, v_coord).rgb; // xyz
-		vec3 vel = vec3(0.0, 0.0, 0.0);
-		float alpha = texture(u_data, v_coord).r; // alpha 	
-        float wait = texture(u_data, v_coord).g; // wait
 
-		if (alpha < 0.0) { // restart
-			pos.x = random(v_coord * 10.0) * 0.2;
-			pos.y = random(v_coord * 20.0) * 0.2;
-			pos.z = random(v_coord * 30.0) * 0.2;
+        // Conditionally Generate Particle Starting Position
+        vec4 initial_position = texture(texture_initial_position, v_coord);
+		if (initial_position.x == 0.0 && initial_position.y == 0.0 && initial_position.z == 0.0) {
+			initial_position.x = random(v_coord * 10.0) * 0.2;
+			initial_position.y = random(v_coord * 20.0) * 0.2;
+			initial_position.z = random(v_coord * 30.0) * 0.2;
 		}
 
-		if (wait <= 0.0) {
-			vel = vec3(0.0, 0.02, 0.0);
-		}
-
-	    cg_FragColor = vec4(pos + vel, 1.0);
+	    cg_FragColor = initial_position;
 	}
 `;
 
@@ -283,7 +280,7 @@ function main () {
 	    //update_position_final(fbo_pos_final);
 		update_data(fbo_data);
         
-	    draw_particle(fbo_pos_initial,fbo_pos_final, fbo_data, pa);
+	    draw_particle(fbo_pos_initial, fbo_pos_final, fbo_data, pa);
 
 		requestAnimationFrame(update);
 	};
@@ -532,11 +529,11 @@ function update_position_initial (position_initial, data) {
     let program = prog_position_initial;
     program.bind();
 
-    if (position_initial.single) gl.uniform1i(program.uniforms.u_pos, position_initial.attach(1));
-    else gl.uniform1i(program.uniforms.u_pos, position_initial.read.attach(1));
+    if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
+    else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
     
-    if (data.single) gl.uniform1i(program.uniforms.u_data, data.attach(3));
-    else gl.uniform1i(program.uniforms.u_data, data.read.attach(3));
+    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(3));
+    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(3));
     
     gl.viewport(0, 0, position_initial.width, position_initial.height);
  
