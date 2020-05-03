@@ -53,60 +53,10 @@ let frag_particle = `#version 300 es
 	}
 `;
 
-let frag_velocity = `#version 300 es
-	precision mediump float;
-
-	uniform sampler2D u_vel; // velocity texture
-	uniform sampler2D u_alpha; // alpha texture
-	
-	in vec2 v_coord;
-
-	out vec4 cg_FragColor; 
-
-	float random(vec2 p) { // generates random number in [0, 1]
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
-	}
-
-	void main() {
-		vec3 vel = texture(u_vel, v_coord).rgb;
-		float alpha = texture(u_alpha, v_coord).r; // alpha of this particle
-		float wait = texture(u_alpha, v_coord).g; // wait of this particle
-        if (wait < 0.0) { // wait time over, let's update velocity
-			vel.y = vel.y - 0.003;
-		}
-    	if (alpha < 0.0) { // restart
-			float angle = random(v_coord * 10.0) * 3.14159 * 2.0;
-			float height = random(v_coord * 20.0) * 0.02 + 0.13;
-			float speed = random(v_coord * 30.0) * 0.01 + 0.02;
-
-			float offset = ((v_coord.x / v_coord.y) / 100.0) * 100.0 - 1.0;
-            vel.x = 0.05 * (sin((alpha * 2.0 * 3.1415 + offset) * 2.0 + 3.1415)) * (1.0 - alpha);
-			vel.y = height / 7.0; // shoot upward
-			vel.z = 0.05 * (sin((alpha * 2.0 * 3.1415 + offset) * 2.0 + 3.1415)) * (1.0 - alpha);
-
-		} else {
-
-            // Perform Cyclone Velocity Calculations
-            float angle = random(v_coord * 10.0) * 3.14159 * 2.0;
-			float height = random(v_coord * 20.0) * 0.02 + 0.13;
-			float speed = random(v_coord * 30.0) * 0.01 + 0.02;
-
-            float offset = ((v_coord.x / v_coord.y) / 100.0) * 100.0 - 1.0;
-            vel.x = 0.05 * (sin((alpha * 2.0 * 3.1415 + offset) * 2.0 + 3.1415)) * (1.0 - alpha);
-			vel.y = height / 7.0; // shoot upward
-			vel.z = 0.05 * (sin((alpha * 2.0 * 3.1415 + offset) * 2.0 + 3.1415)) * (1.0 - alpha);
-
-		}
-
-		cg_FragColor = vec4(vel, 1.0); // draw on velocity texture
-	}
-`;
-
 let frag_position = `#version 300 es
 	precision mediump float;
 
 	uniform sampler2D u_pos; // position texture
-	uniform sampler2D u_vel; // velocity texture
 	uniform sampler2D u_alpha; // alpha texture
 	in vec2 v_coord;
 
@@ -118,19 +68,18 @@ let frag_position = `#version 300 es
 
 	void main() {
 		vec3 pos = texture(u_pos, v_coord).rgb; // xyz
-		vec3 vel = vec3(0.0);
 		float alpha = texture(u_alpha, v_coord).r; // alpha 	
         float wait = texture(u_alpha, v_coord).g; // wait
-		if (wait < 0.0) { // wait time over, let's update position
-			vel = texture(u_vel, v_coord).rgb; // xyz		    
-		}
+
 		if (alpha < 0.0) { // restart
 			pos.x = random(v_coord * 10.0) * 0.2;
 			pos.y = random(v_coord * 20.0) * 0.2;
 			pos.z = random(v_coord * 30.0) * 0.2;
-			
-			vel = vec3(0.0);
 		}
+
+        vec3 vel = vec3(0.0, 0.01, 0.0);
+    
+
 	    cg_FragColor = vec4(pos + vel, 1.0);
 	}
 `;
@@ -218,12 +167,10 @@ let g_index_buffer;
 
 let prog_particle; // particle renderer
 let prog_display; // fbo renderer
-let prog_velocity; // velocity updater
 let prog_position; // position updater
 let prog_alpha; // alpha updater
 
 let fbo_pos; // particle positions
-let fbo_vel; // particle velocities
 let fbo_alpha; // particle alpha
 
 
@@ -286,7 +233,6 @@ function main () {
 
     prog_display = new GLProgram(vertex_display, frag_display);
 	
-	prog_velocity = new GLProgram(vertex_display, frag_velocity);
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_alpha = new GLProgram(vertex_display, frag_alpha);
 
@@ -328,8 +274,7 @@ function main () {
 
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		update_velocity(fbo_vel, fbo_alpha);
-		update_position(fbo_pos, fbo_vel, fbo_alpha);
+		update_position(fbo_pos, fbo_alpha);
 		update_alpha(fbo_alpha);
         
 	    draw_particle(fbo_pos, fbo_alpha, pa);
@@ -372,10 +317,7 @@ function send_buffer_data (pa) {
 //////////////////////////////////////////////////////////////////////
 // Particle constructor
 function Particle () {
-	this.velocity = new Array(3);
 	this.position = new Array(3);
-	this.angle = 0;
-	this.scale = 0;
 	this.alpha = 0;
 	this.wait = 0;
 }
@@ -385,10 +327,6 @@ function init_particle (p, wait) {
 	let angle = Math.random() * Math.PI * 2;
 	let height = Math.random() * 0.02 + 0.13;
 	let speed = Math.random() * 0.01 + 0.02;
-
-	p.velocity[0] = 0;
-	p.velocity[1] = height;
-	p.velocity[2] = 0;
 
 	p.position[0] = Math.random() * 0.2;
 	p.position[1] = Math.random() * 0.2;
@@ -410,7 +348,6 @@ function init_particle (p, wait) {
 function create_fbos (pa) {
 
 	let pos = [];
-	let vel = [];
 	let alpha = [];
 
 	for (let i = 0; i < pa.length; ++i) {
@@ -418,11 +355,6 @@ function create_fbos (pa) {
 		pos.push(pa[i].position[1]); // y
 		pos.push(pa[i].position[2]); // z
 		pos.push(1); // w
-
-		vel.push(pa[i].velocity[0]); // x
-		vel.push(pa[i].velocity[1]); // y
-		vel.push(pa[i].velocity[2]); // z
-		vel.push(1); // w 
 
 		alpha.push(pa[i].alpha); // x
 		alpha.push(pa[i].wait); // y
@@ -432,7 +364,6 @@ function create_fbos (pa) {
     
     // add texture image to fbo
 	fbo_pos.read.addTexture(new Float32Array(pos));
-	fbo_vel.read.addTexture(new Float32Array(vel));
 	fbo_alpha.read.addTexture(new Float32Array(alpha));
 }
 
@@ -534,7 +465,6 @@ function cg_init_framebuffers() {
     // enables float framebuffer color attachment
 
     fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_vel = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_alpha = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
 }
@@ -568,24 +498,6 @@ function render_img (src, dst) {
     }  
 }
 
-function update_velocity (vel, alpha) {
-    let program = prog_velocity;
-    program.bind();
-
-    if (vel.single) gl.uniform1i(program.uniforms.u_vel, vel.attach(1));
-    else gl.uniform1i(program.uniforms.u_vel, vel.read.attach(1));
-    
-    if (alpha.single) gl.uniform1i(program.uniforms.u_alpha, alpha.attach(2));
-    else gl.uniform1i(program.uniforms.u_alpha, alpha.read.attach(2));
-    
-    gl.viewport(0, 0, vel.width, vel.height);
- 
-    if (vel.single) draw_vao_image(vel.fbo);
-    else {
-        draw_vao_image(vel.write.fbo);
-        vel.swap();
-    }  
-}
 
 function update_alpha (alpha) {
     let program = prog_alpha;
@@ -603,15 +515,12 @@ function update_alpha (alpha) {
     }  
 }
 
-function update_position (pos, vel, alpha) {
+function update_position (pos, alpha) {
     let program = prog_position;
     program.bind();
 
     if (pos.single) gl.uniform1i(program.uniforms.u_pos, pos.attach(1));
     else gl.uniform1i(program.uniforms.u_pos, pos.read.attach(1));
-    
-    if (vel.single) gl.uniform1i(program.uniforms.u_vel, vel.attach(2));
-    else gl.uniform1i(program.uniforms.u_vel, vel.read.attach(2));
     
     if (alpha.single) gl.uniform1i(program.uniforms.u_alpha, alpha.attach(3));
     else gl.uniform1i(program.uniforms.u_alpha, alpha.read.attach(3));
