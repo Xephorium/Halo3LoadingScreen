@@ -7,13 +7,14 @@
 /*--- GPU Particle Architecture ---*/
 
 Ring Particle Animation Requirements 
-  - Initial Position Image      // Calculated Once
-  - Final Position Image        // Calculated Once
-  - 
-  - Wait (Sum of R, G, B, and A)  // Image - Static
-  - Current Position              // Dynamicly Interpolated with factor
-  - Color (RGBA)                  // Image - Dynamicly Assigned based on factor
-  - Completion Factor             // clamp01((currentTime - wait) / LENGTH)
+  - Initial Position      // Calculated Once
+  - Final Position        // Calculated Once
+  - Wait                  // Calculated Once
+  - Factor                // Dynamic: clamp01((currentTime - wait) / LENGTH)
+  - Alpha                 // Dynamically calculated from factor
+  - Brightness            // Dynamically calculated from factor
+  - Position              // Dynamically calculated from factor
+  - Color                 // Dynamically calculated from alpha + factor
 
 Ring Particle Shaders
   - vertex/frag particle
@@ -28,10 +29,10 @@ Ambient Particle Animation Requirements
 Shader: Position Initial
 Shader: Position Final
 Shader: Data
-  > Wait (R)                // Constant
-  > Alpha (G)               // Fades out early
+  > Alpha (R)               // Fades out early
+  > Wait (G)                // Constant
   > Brightness (B)          // Burst toward end
-  > Factor (A)              // clamp01((time - Wait) / LENGTH)
+  > Seed (A)                // Random for each particle
 
 
 /*--- Math ---*/

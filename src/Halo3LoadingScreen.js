@@ -327,29 +327,27 @@ function Particle () {
 	this.position_final = new Array(3);
 	this.alpha = 0;
 	this.wait = 0;
+	this.brightness = 1;
+	this.seed = 0;
 }
 
 function init_particle (p, wait) {
-	// Movement speed
-	let angle = Math.random() * Math.PI * 2;
-	let height = Math.random() * 0.02 + 0.13;
-	let speed = Math.random() * 0.01 + 0.02;
 
+    // Generate Initial Position
 	p.position_initial[0] = Math.random() * 0.2;
 	p.position_initial[1] = Math.random() * 0.2;
 	p.position_initial[2] = Math.random() * 0.2;
 
-	// Rotation angle
-	p.angle = Math.random() * 360; // [0, 1]
-	// Size
-	p.scale = Math.random() * 0.5 + 0.5; // [0.5, 1]
-	// Transparency
-	p.alpha = 1;
-	// In initial stage, lety a time for creation
-	if (wait == true) {
-		// Time to wait
-		p.wait = Math.random() * 300;
-	}
+	// Generate Final Position
+	p.position_final[0] = Math.random() * 0.2;
+	p.position_final[1] = Math.random() * 0.2;
+	p.position_final[2] = Math.random() * 0.2;
+
+    // Generate Default Data
+    p.alpha = 1;
+    p.wait = Math.random() * 300;
+    p.brightness = 1;
+    p.seed = Math.random() * 1000;
 }
 
 function create_fbos (pa) {
@@ -362,17 +360,17 @@ function create_fbos (pa) {
 		position_initial.push(pa[i].position_initial[0]); // x
 		position_initial.push(pa[i].position_initial[1]); // y
 		position_initial.push(pa[i].position_initial[2]); // z
-		position_initial.push(1); // w
+		position_initial.push(1);                         // w
 
 		position_final.push(pa[i].position_initial[0]); // x
 		position_final.push(pa[i].position_initial[1]); // y
 		position_final.push(pa[i].position_initial[2]); // z
-		position_final.push(1); // w
+		position_final.push(1);                         // w
 
-		data.push(pa[i].alpha); // x
-		data.push(pa[i].wait); // y
-		data.push(0); // z
-		data.push(1); // w 
+		data.push(pa[i].alpha);     // x
+		data.push(pa[i].wait);      // y
+		data.push(pa[i].bightness); // z
+		data.push(pa[i].seed);      // w 
 	}
     
     // add texture image to fbo
