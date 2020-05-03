@@ -56,7 +56,7 @@ let frag_particle = `#version 300 es
 let frag_position_initial = `#version 300 es
 	precision mediump float;
 
-	uniform sampler2D u_pos; // position texture
+	uniform sampler2D u_pos;  // initial position texture
 	uniform sampler2D u_data; // data texture
 	in vec2 v_coord;
 
