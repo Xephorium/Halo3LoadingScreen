@@ -1,0 +1,33 @@
+
+//////////////////////////////
+//// WebGL Halo Animation ////
+//////////////////////////////
+
+
+/*--- GPU Particle Architecture ---*/
+
+Ring Particle Animation Requirements 
+  - Initial Position              // Image - Static
+  - Initial Velocity              // Image - Static
+  - Final Position                // Image - Static
+  - Final Velocity                // Image - Static
+  - Wait (Sum of R, G, B, and A)  // Image - Static
+  - Current Position              // Image - Dynamic
+  - Appearance (RGBA)             // Image - Dynamic (Color and alpha calculated)
+  - Completion Factor             // clamp01((currentTime - wait) / LENGTH)
+
+Ambient Particle Animation Requirements
+  - TBD. Likely animated perlin noise used for pseudorandom drift.
+
+
+/*--- Math ---*/
+
+Dynamic Velocity Smoothing Equation (Used for each ring particle's path.)
+
+    velocity = (1 - s(t))a + b(s(t))
+
+    a    = starting velocity
+    b    = ending velocity
+    s(t) = Smooth interpolation from 0 to 1 given input t
+    t    = time
+
