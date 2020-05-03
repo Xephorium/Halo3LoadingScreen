@@ -196,8 +196,9 @@ const frag_display = `#version 300 es
 /*--- Program Configuration ---*/
 
 let config = {
-	RESOLUTION_SCALE: 1.0,   // Default: 1080p
-    TEXTURE_SIZE: 100        // Value squared is max particle count.
+	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
+	BACKGROUND_COLOR: [1.0, 1.0, 1.0, 1.0],
+    TEXTURE_SIZE: 100                        // Value squared is max particle count.
 }
 
 
@@ -312,7 +313,11 @@ function main () {
 	init_buffers(prog_particle); 
 	send_buffer_data(pa);
 
-    gl.clearColor(0.45, 0.65, 0.9, 1);
+    gl.clearColor(
+        config.BACKGROUND_COLOR[0],
+        config.BACKGROUND_COLOR[1],
+        config.BACKGROUND_COLOR[2],
+        config.BACKGROUND_COLOR[3]);
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
