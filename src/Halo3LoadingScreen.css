@@ -1,0 +1,19 @@
+
+body {
+    margin:0;
+    overflow:hidden;
+    background: #222222
+}
+
+canvas {
+    width: 100vw; 
+    height: 56.25vw;     /* height/width = 9/16 = .5625 */
+    max-height: 100vh;
+    max-width: 177.78vh; /* width/height = 16/9 = 1.778 */
+    margin: auto;
+    position: absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    right:0;
+}
