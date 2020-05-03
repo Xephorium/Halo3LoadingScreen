@@ -2,9 +2,10 @@
  *  Christopher Cruzen
  *  05.03.2020
  *
- *  This program is a heavily modified version of a GPU-based particle animation
- *  shader provided by Henry Kang in UMSL's Topics in Computer Graphics course. We 
- *  stand on the shoulders of giants.
+ *  This program is a heavily modified version of a GPU-based particle shader
+ *  provided by Henry Kang in UMSL's Topics in Computer Graphics course.
+ *
+ *  We stand on the shoulders of giants.
  */ 
 
 
