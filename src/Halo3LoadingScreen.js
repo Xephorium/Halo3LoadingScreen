@@ -53,7 +53,7 @@ let frag_particle = `#version 300 es
 	}
 `;
 
-let frag_position = `#version 300 es
+let frag_position_initial = `#version 300 es
 	precision mediump float;
 
 	uniform sampler2D u_pos; // position texture
@@ -68,6 +68,7 @@ let frag_position = `#version 300 es
 
 	void main() {
 		vec3 pos = texture(u_pos, v_coord).rgb; // xyz
+		vec3 vel = vec3(0.0, 0.0, 0.0);
 		float alpha = texture(u_alpha, v_coord).r; // alpha 	
         float wait = texture(u_alpha, v_coord).g; // wait
 
@@ -77,8 +78,9 @@ let frag_position = `#version 300 es
 			pos.z = random(v_coord * 30.0) * 0.2;
 		}
 
-        vec3 vel = vec3(0.0, 0.01, 0.0);
-    
+		if (wait <= 0.0) {
+			vel = vec3(0.0, 0.02, 0.0);
+		}
 
 	    cg_FragColor = vec4(pos + vel, 1.0);
 	}
@@ -167,11 +169,13 @@ let g_index_buffer;
 
 let prog_particle; // particle renderer
 let prog_display; // fbo renderer
-let prog_position; // position updater
+let prog_position_initial; // position updater
+let prog_position_final; // position updater
 let prog_alpha; // alpha updater
 
-let fbo_pos; // particle positions
-let fbo_alpha; // particle alpha
+let fbo_pos_initial; // particle initial positions
+let fbo_pos_final;   // particle final positions
+let fbo_alpha;       // particle alpha
 
 
 /*--- Shader Execution Functions ---*/
@@ -233,7 +237,8 @@ function main () {
 
     prog_display = new GLProgram(vertex_display, frag_display);
 	
-	prog_position = new GLProgram(vertex_display, frag_position);
+	prog_position_initial = new GLProgram(vertex_display, frag_position_initial);
+	//prog_position_final = new GLProgram(vertex_display, frag_position_final);
     prog_alpha = new GLProgram(vertex_display, frag_alpha);
 
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
@@ -254,7 +259,7 @@ function main () {
    	vao_image_create();
 
 	cg_init_framebuffers(); // create fbos 
-	create_fbos(pa); // initialize fbo data
+	create_fbos(pa);        // initialize fbo data
 
 	init_buffers(prog_particle); 
 	send_buffer_data(pa);
@@ -274,10 +279,11 @@ function main () {
 
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		update_position(fbo_pos, fbo_alpha);
+		update_position_initial(fbo_pos_initial, fbo_alpha);
+	    //update_position_final(fbo_pos_final);
 		update_alpha(fbo_alpha);
         
-	    draw_particle(fbo_pos, fbo_alpha, pa);
+	    draw_particle(fbo_pos_initial,fbo_pos_final, fbo_alpha, pa);
 
 		requestAnimationFrame(update);
 	};
@@ -317,7 +323,8 @@ function send_buffer_data (pa) {
 //////////////////////////////////////////////////////////////////////
 // Particle constructor
 function Particle () {
-	this.position = new Array(3);
+	this.position_initial = new Array(3);
+	this.position_final = new Array(3);
 	this.alpha = 0;
 	this.wait = 0;
 }
@@ -328,9 +335,9 @@ function init_particle (p, wait) {
 	let height = Math.random() * 0.02 + 0.13;
 	let speed = Math.random() * 0.01 + 0.02;
 
-	p.position[0] = Math.random() * 0.2;
-	p.position[1] = Math.random() * 0.2;
-	p.position[2] = Math.random() * 0.2;
+	p.position_initial[0] = Math.random() * 0.2;
+	p.position_initial[1] = Math.random() * 0.2;
+	p.position_initial[2] = Math.random() * 0.2;
 
 	// Rotation angle
 	p.angle = Math.random() * 360; // [0, 1]
@@ -347,14 +354,20 @@ function init_particle (p, wait) {
 
 function create_fbos (pa) {
 
-	let pos = [];
+	let position_initial = [];
+	let position_final = [];
 	let alpha = [];
 
 	for (let i = 0; i < pa.length; ++i) {
-		pos.push(pa[i].position[0]); // x
-		pos.push(pa[i].position[1]); // y
-		pos.push(pa[i].position[2]); // z
-		pos.push(1); // w
+		position_initial.push(pa[i].position_initial[0]); // x
+		position_initial.push(pa[i].position_initial[1]); // y
+		position_initial.push(pa[i].position_initial[2]); // z
+		position_initial.push(1); // w
+
+		position_final.push(pa[i].position_initial[0]); // x
+		position_final.push(pa[i].position_initial[1]); // y
+		position_final.push(pa[i].position_initial[2]); // z
+		position_final.push(1); // w
 
 		alpha.push(pa[i].alpha); // x
 		alpha.push(pa[i].wait); // y
@@ -363,7 +376,8 @@ function create_fbos (pa) {
 	}
     
     // add texture image to fbo
-	fbo_pos.read.addTexture(new Float32Array(pos));
+	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
+	fbo_pos_final.read.addTexture(new Float32Array(position_final));
 	fbo_alpha.read.addTexture(new Float32Array(alpha));
 }
 
@@ -464,7 +478,8 @@ function cg_init_framebuffers() {
     gl.getExtension('EXT_color_buffer_float');
     // enables float framebuffer color attachment
 
-    fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos_initial = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos_final = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_alpha = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
 }
@@ -515,31 +530,50 @@ function update_alpha (alpha) {
     }  
 }
 
-function update_position (pos, alpha) {
-    let program = prog_position;
+function update_position_initial (position_initial, alpha) {
+    let program = prog_position_initial;
     program.bind();
 
-    if (pos.single) gl.uniform1i(program.uniforms.u_pos, pos.attach(1));
-    else gl.uniform1i(program.uniforms.u_pos, pos.read.attach(1));
+    if (position_initial.single) gl.uniform1i(program.uniforms.u_pos, position_initial.attach(1));
+    else gl.uniform1i(program.uniforms.u_pos, position_initial.read.attach(1));
     
     if (alpha.single) gl.uniform1i(program.uniforms.u_alpha, alpha.attach(3));
     else gl.uniform1i(program.uniforms.u_alpha, alpha.read.attach(3));
     
-    gl.viewport(0, 0, pos.width, pos.height);
+    gl.viewport(0, 0, position_initial.width, position_initial.height);
  
-    if (pos.single) draw_vao_image(pos.fbo);
+    if (position_initial.single) draw_vao_image(position_initial.fbo);
     else {
-        draw_vao_image(pos.write.fbo);
-        pos.swap();
+        draw_vao_image(position_initial.write.fbo);
+        position_initial.swap();
     }  
 }
 
-function draw_particle (pos, alpha, pa) {
+// function update_position_final (position_final, alpha) {
+//     let program = prog_position_final;
+//     program.bind();
+
+//     if (position_final.single) gl.uniform1i(program.uniforms.u_pos, position_final.attach(1));
+//     else gl.uniform1i(program.uniforms.u_pos, position_final.read.attach(1));
+    
+//     if (alpha.single) gl.uniform1i(program.uniforms.u_alpha, alpha.attach(3));
+//     else gl.uniform1i(program.uniforms.u_alpha, alpha.read.attach(3));
+    
+//     gl.viewport(0, 0, position_final.width, position_final.height);
+ 
+//     if (position_final.single) draw_vao_image(position_final.fbo);
+//     else {
+//         draw_vao_image(position_final.write.fbo);
+//         position_final.swap();
+//     }  
+// }
+
+function draw_particle (position_initial, position_final, alpha, pa) {
     let program = prog_particle;
     program.bind();
 
-    if (pos.single) gl.uniform1i(program.uniforms.u_pos, pos.attach(1));
-    else gl.uniform1i(program.uniforms.u_pos, pos.read.attach(1));
+    if (position_initial.single) gl.uniform1i(program.uniforms.u_pos, position_initial.attach(1));
+    else gl.uniform1i(program.uniforms.u_pos, position_initial.read.attach(1));
     
     if (alpha.single) gl.uniform1i(program.uniforms.u_alpha, alpha.attach(2));
     else gl.uniform1i(program.uniforms.u_alpha, alpha.read.attach(2));
