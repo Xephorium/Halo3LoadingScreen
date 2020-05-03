@@ -8,13 +8,15 @@
 
 Ring Particle Animation Requirements 
   - Initial Position              // Image - Static
-  - Initial Velocity              // Image - Static
   - Final Position                // Image - Static
-  - Final Velocity                // Image - Static
   - Wait (Sum of R, G, B, and A)  // Image - Static
-  - Current Position              // Image - Dynamic
-  - Appearance (RGBA)             // Image - Dynamic (Color and alpha calculated)
+  - Current Position              // Image - Dynamicly Interpolated with factor
+  - Color (RGBA)                  // Image - Dynamicly Assigned based on factor
   - Completion Factor             // clamp01((currentTime - wait) / LENGTH)
+
+Ring Particle Shaders
+  - vertex/frag particle
+
 
 Ambient Particle Animation Requirements
   - TBD. Likely animated perlin noise used for pseudorandom drift.
