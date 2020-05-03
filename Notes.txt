@@ -7,10 +7,11 @@
 /*--- GPU Particle Architecture ---*/
 
 Ring Particle Animation Requirements 
-  - Initial Position              // Image - Static
-  - Final Position                // Image - Static
+  - Initial Position Image      // Calculated Once
+  - Final Position Image        // Calculated Once
+  - 
   - Wait (Sum of R, G, B, and A)  // Image - Static
-  - Current Position              // Image - Dynamicly Interpolated with factor
+  - Current Position              // Dynamicly Interpolated with factor
   - Color (RGBA)                  // Image - Dynamicly Assigned based on factor
   - Completion Factor             // clamp01((currentTime - wait) / LENGTH)
 
@@ -20,6 +21,17 @@ Ring Particle Shaders
 
 Ambient Particle Animation Requirements
   - TBD. Likely animated perlin noise used for pseudorandom drift.
+
+
+/*--- Pseudocode ---*/
+
+Shader: Position Initial
+Shader: Position Final
+Shader: Data
+  > Wait (R)                // Constant
+  > Alpha (G)               // Fades out early
+  > Brightness (B)          // Burst toward end
+  > Factor (A)              // clamp01((time - Wait) / LENGTH)
 
 
 /*--- Math ---*/
