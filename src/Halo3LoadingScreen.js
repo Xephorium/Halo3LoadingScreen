@@ -275,27 +275,9 @@ function main () {
 	// Get the rendering context for WebGL
 	gl = canvas.getContext('webgl2');
 
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-
-    // New Code Here
-
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
     canvas.height = 1080 * config.RESOLUTION_SCALE;
-
-    // Dynamically Resize Fullscreen
-//     document.defaultView.addEventListener("resize", function (event) {
-//         canvas.width  = window.innerWidth;
-//         canvas.height = window.innerHeight;
-//     });
-
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
 
 	prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
