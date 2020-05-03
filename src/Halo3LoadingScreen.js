@@ -195,11 +195,8 @@ const frag_display = `#version 300 es
 /*--- Program Configuration ---*/
 
 let config = {
-    RES: 100, // RES^2 = PARTICLE COUNT
-    SPEED_X: 0.0,
-    SPEED_Y: 0.0,
-    CAMERA_DIST: 30,
-    SHADER: 0,
+	RESOLUTION_SCALE: 1.0,   // Default: 1080p
+    TEXTURE_SIZE: 100        // Value squared is max particle count.
 }
 
 
@@ -285,15 +282,15 @@ function main () {
 
     // New Code Here
 
-	// Make Canvas Fullscreen
-	canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Set Render Resolution
+	canvas.width  = 1920 * config.RESOLUTION_SCALE;
+    canvas.height = 1080 * config.RESOLUTION_SCALE;
 
     // Dynamically Resize Fullscreen
-    document.defaultView.addEventListener("resize", function (event) {
-        canvas.width  = window.innerWidth;
-        canvas.height = window.innerHeight;
-    });
+//     document.defaultView.addEventListener("resize", function (event) {
+//         canvas.width  = window.innerWidth;
+//         canvas.height = window.innerHeight;
+//     });
 
     //////////////////////////////////////////////
     //////////////////////////////////////////////
@@ -317,12 +314,7 @@ function main () {
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
 
 	// Create particles
-	//config.RES = 30; // 1000
-	config.RES = 100; // 10000
-	//config.RES = 400; // 100000
-	let pa = new Array(config.RES * config.RES); 
-
-    //$("info").innerHTML = "particle count: " + pa.length;
+	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE); 
 
 	for (let i = 0; i < pa.length; ++i) {
 		pa[i] = new Particle();
@@ -378,10 +370,10 @@ function send_buffer_data (pa) {
 	let coords = [];
 
 	for (let i = 0; i < pa.length; ++i) {	
-		let y = Math.floor(i / config.RES);
-		let x = i - config.RES * y;  
-		coords.push(x/config.RES); // [0, 1]
-		coords.push(y/config.RES); // [0, 1]
+		let y = Math.floor(i / config.TEXTURE_SIZE);
+		let x = i - config.TEXTURE_SIZE * y;  
+		coords.push(x/config.TEXTURE_SIZE); // [0, 1]
+		coords.push(y/config.TEXTURE_SIZE); // [0, 1]
 	}
 
 	let texcoords = new Float32Array(coords); 
@@ -553,9 +545,9 @@ function cg_init_framebuffers() {
     gl.getExtension('EXT_color_buffer_float');
     // enables float framebuffer color attachment
 
-    fbo_pos = create_double_fbo(config.RES, config.RES, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_vel = create_double_fbo(config.RES, config.RES, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_alpha = create_double_fbo(config.RES, config.RES, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_vel = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_alpha = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
 }
 
@@ -566,35 +558,8 @@ function render_null (src) {
 
     if (src.single) gl.uniform1i(program.uniforms.u_image, src.attach(7));
     else gl.uniform1i(program.uniforms.u_image, src.read.attach(7));
-    
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
 
-    // New Code Here
-
-	// Determine DrawDimensions
-	let smallestSize = canvas.width;
-	if (canvas.height < smallestSize) smallestSize = canvas.height;
-	let offsetX = 0;
-	if (canvas.width > smallestSize) {
-		offsetX += (canvas.width - smallestSize) / 2;
-	}
-	let offsetY = 0;
-	if (canvas.height > smallestSize) {
-		offsetY += (canvas.height - smallestSize) / 2;
-	}
-
-	// Set Render Size
-	gl.viewport(offsetX, offsetY, smallestSize, smallestSize);
-
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-
-    //gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.viewport(0, 0, canvas.width, canvas.height);
 
     draw_vao_image(null);
 }
@@ -684,34 +649,7 @@ function draw_particle (pos, alpha, pa) {
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-	//////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-
-    // New Code Here
-
-	// Determine DrawDimensions
-	let smallestSize = canvas.width;
-	if (canvas.height < smallestSize) smallestSize = canvas.height;
-	let offsetX = 0;
-	if (canvas.width > smallestSize) {
-		offsetX += (canvas.width - smallestSize) / 2;
-	}
-	let offsetY = 0;
-	if (canvas.height > smallestSize) {
-		offsetY += (canvas.height - smallestSize) / 2;
-	}
-
-	// Set Render Size
-	gl.viewport(offsetX, offsetY, smallestSize, smallestSize);
-
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-    //////////////////////////////////////////////
-
-	//gl.viewport(0, 0, canvas.width, canvas.height);
+	gl.viewport(0, 0, canvas.width, canvas.height);
 
 	gl.drawArrays(gl.POINTS, 0, pa.length); // draw points
 }
