@@ -3,7 +3,7 @@
  *  05.03.2020
  *
  *  This program is a heavily modified version of a GPU-based particle shader
- *  provided by Henry Kang in UMSL's Topics in Computer Graphics course.
+ *  provided by Dr. Henry Kang in UMSL's Topics in Computer Graphics course.
  *
  *  We stand on the shoulders of giants.
  */ 
@@ -44,12 +44,12 @@ let frag_particle = `#version 300 es
 
 	void main() {
 		vec4 cout = vec4(0.0); // by default, don't draw this particle
-		float alpha = texture(u_data, v_texcoord).r; // alpha of this particle
-		float wait = texture(u_data, v_texcoord).g; // wait of this particle
+		float alpha = texture(u_data, v_texcoord).r;
+		float wait = texture(u_data, v_texcoord).g;
 		
-		if (wait < 0.0) cout = vec4(0.2, 0.2, 0.2, alpha);
-		// wait time has expired, so draw this particle
-		cg_FragColor = cout;  
+// 		if (wait < 0.0) cout = vec4(0.2, 0.2, 0.2, alpha);
+// 		// wait time has expired, so draw this particle
+		cg_FragColor = vec4(0.3, 0.3, 0.3, alpha);  
 	}
 `;
 
@@ -63,21 +63,9 @@ let frag_position_initial = `#version 300 es
     // Output Variables
 	out vec4 cg_FragColor; 
 
-    // Define Random Function
-	float random(vec2 p) {
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
-	}
-
 	void main() {
-
-        // Conditionally Generate Particle Starting Position
+        // Persist Initial Position
         vec4 initial_position = texture(texture_initial_position, v_coord);
-   		if (initial_position.x == 0.0 && initial_position.y == 0.0 && initial_position.z == 0.0) {
- 			initial_position.x = random(v_coord * 10.0) * 0.2 + 2.0;
- 			initial_position.y = random(v_coord * 20.0) * 0.2 + 2.0;
- 			initial_position.z = random(v_coord * 30.0) * 0.2;
- 		}
-
 	    cg_FragColor = initial_position;
 	}
 `;
@@ -92,22 +80,11 @@ let frag_position_final = `#version 300 es
     // Output Variables
 	out vec4 cg_FragColor; 
 
-    // Define Random Function
-	float random(vec2 p) {
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
-	}
-
 	void main() {
 
-        // Conditionally Generate Particle Starting Position
+        // Persist Final Position
         vec4 final_position = texture(texture_final_position, v_coord);
-		if (final_position.x == 0.0 && final_position.y == 0.0 && final_position.z == 0.0) {
-			final_position.x = random(v_coord * 10.0) * 0.2 - 2.0;
-			final_position.y = random(v_coord * 20.0) * 0.2 + 2.0;
-			final_position.z = random(v_coord * 30.0) * 0.2;
-		}
-
-	    cg_FragColor = final_position;
+ 	    cg_FragColor = final_position;
 	}
 `;
 
@@ -124,17 +101,24 @@ let frag_position = `#version 300 es
 	in vec2 v_coord;
 
     // Output Variables
-	out vec4 cg_FragColor; 
+	out vec4 cg_FragColor;
 
-    // Define Random Function
-	float random(vec2 p) {
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
+    // Procedural Amplitude Generator
+	float generate_amplitude(float value_one, float value_two) {
+	    float seed_one = 78.0;
+	    float seed_two = 1349.0;
+	    return mod(value_one * seed_one + value_two * seed_two, 20.0) / 20.0;
 	}
 
 	void main() {
-		vec4 position = texture(texture_position, v_coord);
+		vec4 initial_position = texture(texture_initial_position, v_coord);
+		vec4 final_position = texture(texture_final_position, v_coord);
+		float factor = mod(time, time_loop) / time_loop;
 
-        cg_FragColor = position - vec4(0.01, 0.0, 0.0, 0.0);
+		// Perform Linear Interpolation Between Points
+		vec4 position = mix(initial_position, final_position, factor);
+
+        cg_FragColor = position;
 	}
 `;
 
@@ -153,19 +137,12 @@ let frag_data = `#version 300 es
 	}
 
 	void main() {
-		float alpha = texture(texture_data, v_coord).r; // alpha
-        float wait = texture(texture_data, v_coord).g; // wait
-        
-        wait = wait - 1.0;
-        if (alpha < 0.0) {
-        	alpha = 1.0;
-       	    wait = random(v_coord * 100.0) * 300.0; // [0, 120]
-        }
-        if (wait < 0.0) { // wait time over, let's update alpha
-		    alpha = alpha - 0.005;
-		}
+
+		float factor = mod(time, time_loop) / time_loop;
+		float alpha = texture(texture_data, v_coord).r;
+        float wait = texture(texture_data, v_coord).g;
 		    
-        cg_FragColor = vec4(alpha, wait, 0.0, 1.0);
+        cg_FragColor = vec4(256.0, wait, 0.0, 1.0);
 	}	
 `;
 
@@ -200,7 +177,7 @@ const frag_display = `#version 300 es
 /*--- Program Configuration ---*/
 
 let config = {
-	LOOP_TIME: 5.0,
+	LOOP_TIME:4000,
 	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
 	BACKGROUND_COLOR: [1.0, 1.0, 1.0, 1.0],
     TEXTURE_SIZE: 100                        // Value squared is max particle count.
@@ -208,8 +185,6 @@ let config = {
 
 
 /*--- Variable Declarations ---*/
-
-let time = 0.0;
 
 let gl, canvas;
 let g_proj_mat = new Matrix4();
@@ -273,6 +248,14 @@ class GLProgram {
     bind () {
         gl.useProgram(this.program);
     }
+
+    bind_time() {
+    	var location_time = gl.getUniformLocation(this.program, "time");
+    	var location_time_loop = gl.getUniformLocation(this.program, "time_loop");
+    	gl.useProgram(this.program);
+        gl.uniform1f(location_time, performance.now());
+        gl.uniform1f(location_time_loop, config.LOOP_TIME);
+    }
 }
 
 function $(id) {
@@ -312,7 +295,7 @@ function main () {
 
 	for (let i = 0; i < pa.length; ++i) {
 		pa[i] = new Particle();
-		init_particle(pa[i], true);
+		init_particle(pa[i]);
 	}
 
    	vao_image_create();
@@ -340,12 +323,10 @@ function main () {
 
 		update_position_initial(fbo_pos_initial);
 	    update_position_final(fbo_pos_final);
-		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data, time, config.LOOP_TIME);
-		update_data(fbo_data, time, config.LOOP_TIME);
+		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data);
+		update_data(fbo_data);
         
 	    draw_particle(fbo_pos, fbo_data, pa);
-
-	    time += 1.0;
 
 		requestAnimationFrame(update);
 	};
@@ -394,7 +375,7 @@ function Particle () {
 	this.seed = 0;
 }
 
-function init_particle (p, wait) {
+function init_particle (p) {
 
     // Generate Initial Position
 	p.position_initial[0] = Math.random() * 0.2 + 2.0;
@@ -431,9 +412,9 @@ function create_fbos (pa) {
 		position_initial.push(pa[i].position_initial[2]); // z
 		position_initial.push(1);                         // w
 
-		position_final.push(pa[i].position_initial[0]); // x
-		position_final.push(pa[i].position_initial[1]); // y
-		position_final.push(pa[i].position_initial[2]); // z
+		position_final.push(pa[i].position_final[0]); // x
+		position_final.push(pa[i].position_final[1]); // y
+		position_final.push(pa[i].position_final[2]); // z
 		position_final.push(1);                         // w
 
 		position.push(pa[i].position[0]); // x
@@ -588,18 +569,12 @@ function render_img (src, dst) {
 }
 
 
-function update_data (data, current_time, loop_time) {
+function update_data (data, loop_time) {
     let program = prog_data;
-    program.bind();
+    program.bind_time();
 
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
-
-    if (current_time.single) gl.uniform1i(program.uniforms.time, current_time.attach(2));
-    else gl.uniform1i(program.uniforms.time, current_time);
-
-    if (loop_time.single) gl.uniform1i(program.uniforms.time_loop, current_time.attach(3));
-    else gl.uniform1i(program.uniforms.time_loop, loop_time);
 
     gl.viewport(0, 0, data.width, data.height);
  
@@ -642,9 +617,9 @@ function update_position_final (position_final, currentTime) {
     }  
 }
 
-function update_position (position_initial, position_final, position, data, current_time, loop_time) {
+function update_position (position_initial, position_final, position, data, loop_time) {
     let program = prog_position;
-    program.bind();
+    program.bind_time();
 
     if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
     else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
@@ -657,12 +632,6 @@ function update_position (position_initial, position_final, position, data, curr
 
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(4));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(4));
-
-    if (current_time.single) gl.uniform1i(program.uniforms.time, current_time.attach(5));
-    else gl.uniform1i(program.uniforms.time, current_time);
-    
-    if (loop_time.single) gl.uniform1i(program.uniforms.time_loop, current_time.attach(6));
-    else gl.uniform1i(program.uniforms.time_loop, loop_time);
 
     gl.viewport(0, 0, position.width, position.height);
  
