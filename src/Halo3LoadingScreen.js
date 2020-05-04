@@ -24,7 +24,7 @@ let vertex_particle = `#version 300 es
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = 4.0;
+		gl_PointSize = 5.0;
 		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
@@ -212,7 +212,7 @@ let config = {
 	GLOBAL_DELAY: 1000,
 	LOOP_TIME:2500,
 	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
-	BACKGROUND_COLOR: [0.2, 0.25, 0.35, 1.0],
+	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     TEXTURE_SIZE: 10                         // Value squared is max particle count.
 }
 
