@@ -24,7 +24,7 @@ let vertex_particle = `#version 300 es
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = 3.0;
+		gl_PointSize = 4.0;
 		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
@@ -49,7 +49,7 @@ let frag_particle = `#version 300 es
 		
 // 		if (wait < 0.0) cout = vec4(0.2, 0.2, 0.2, alpha);
 // 		// wait time has expired, so draw this particle
-		cg_FragColor = vec4(0.3, 0.3, 0.3, alpha);  
+		cg_FragColor = vec4(0.9, 0.9, 1.0, alpha);  
 	}
 `;
 
@@ -98,16 +98,29 @@ let frag_position = `#version 300 es
 	uniform sampler2D texture_data;
 	uniform float time;
 	uniform float time_loop;
+	uniform float time_delay;
 	in vec2 v_coord;
 
     // Output Variables
 	out vec4 cg_FragColor;
 
-    // Procedural Float Generator [0, 1]
+    // Procedural Float Generator [-1, 1]
 	float generate_float(float value_one, float value_two) {
 	    float seed_one = 78.0;
 	    float seed_two = 1349.0;
-	    return mod(value_one * seed_one + value_two * seed_two, 20.0) / 20.0;
+	    float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
+	    return magnitude;
+	}
+
+	// Detour Point Generator
+	vec4 generate_detour_point(vec4 p1, vec4 p2, float seed) {
+		vec4 middle = mix(p1, p2, 0.5);
+		return vec4(
+            middle[0],
+            middle[1]  + generate_float(3.0, seed) * 1.0,
+            middle[2],
+            middle[3]
+		);
 	}
 
 	// Quadratic Spline Interpolator
@@ -122,10 +135,13 @@ let frag_position = `#version 300 es
 	void main() {
 		vec4 initial_position = texture(texture_initial_position, v_coord);
 		vec4 final_position = texture(texture_final_position, v_coord);
-		float factor = mod(time, time_loop) / time_loop;
+		float wait = texture(texture_data, v_coord).g;
+		float seed = texture(texture_data, v_coord).a;
+		float delayed_time = max(time - time_delay, 0.0);
+		float factor = mod(max(delayed_time - wait, 0.0), time_loop) / time_loop;
 
 		// Generate Middle Position
-		vec4 middle_position = vec4(0.0, 3.0, 0.0, 0.0);
+		vec4 middle_position = generate_detour_point(initial_position, final_position, seed);
 
 		// Perform Linear Interpolation Between Points
 		vec4 position = interpolate_location(initial_position, middle_position, final_position, factor);
@@ -140,6 +156,7 @@ let frag_data = `#version 300 es
 	uniform sampler2D texture_data;
 	uniform float time;
 	uniform float time_loop;
+	uniform float time_delay;
 	in vec2 v_coord;
 
 	out vec4 cg_FragColor; 
@@ -149,12 +166,15 @@ let frag_data = `#version 300 es
 	}
 
 	void main() {
-
-		float factor = mod(time, time_loop) / time_loop;
 		float alpha = texture(texture_data, v_coord).r;
         float wait = texture(texture_data, v_coord).g;
+        float seed = texture(texture_data, v_coord).a;
+        float delayed_time = max(time - time_delay, 0.0);
+		float factor = mod(max(delayed_time - wait, 0.0), time_loop) / time_loop;
+
+        //alpha = pow(factor, 2.0);
 		    
-        cg_FragColor = vec4(256.0, wait, 0.0, 1.0);
+        cg_FragColor = vec4(alpha, wait, 0.0, seed);
 	}	
 `;
 
@@ -189,14 +209,17 @@ const frag_display = `#version 300 es
 /*--- Program Configuration ---*/
 
 let config = {
-	LOOP_TIME:4000,
+	GLOBAL_DELAY: 1000,
+	LOOP_TIME:2500,
 	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
-	BACKGROUND_COLOR: [1.0, 1.0, 1.0, 1.0],
-    TEXTURE_SIZE: 100                        // Value squared is max particle count.
+	BACKGROUND_COLOR: [0.2, 0.25, 0.35, 1.0],
+    TEXTURE_SIZE: 10                         // Value squared is max particle count.
 }
 
 
 /*--- Variable Declarations ---*/
+
+let time = 0.0;
 
 let gl, canvas;
 let g_proj_mat = new Matrix4();
@@ -264,9 +287,11 @@ class GLProgram {
     bind_time() {
     	var location_time = gl.getUniformLocation(this.program, "time");
     	var location_time_loop = gl.getUniformLocation(this.program, "time_loop");
+    	var location_time_delay = gl.getUniformLocation(this.program, "time_delay");
     	gl.useProgram(this.program);
-        gl.uniform1f(location_time, performance.now());
+        gl.uniform1f(location_time, time);
         gl.uniform1f(location_time_loop, config.LOOP_TIME);
+        gl.uniform1f(location_time_delay, config.GLOBAL_DELAY);
     }
 }
 
@@ -296,7 +321,7 @@ function main () {
     prog_data = new GLProgram(vertex_display, frag_data);
 
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
-	g_view_mat.setLookAt(0, 3, 10, 0, 2, 0, 0, 1, 0); // eyePos - focusPos - upVector    
+	g_view_mat.setLookAt(0, 0, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector    
 
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
@@ -333,12 +358,12 @@ function main () {
 
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		update_position_initial(fbo_pos_initial);
-	    update_position_final(fbo_pos_final);
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data);
 		update_data(fbo_data);
         
 	    draw_particle(fbo_pos, fbo_data, pa);
+
+	    time = performance.now();
 
 		requestAnimationFrame(update);
 	};
@@ -381,7 +406,7 @@ function Particle () {
 	this.position_initial = new Array(3);
 	this.position_final = new Array(3);
 	this.position = new Array(3);
-	this.alpha = 0;
+	this.alpha = 1;
 	this.wait = 0;
 	this.brightness = 1;
 	this.seed = 0;
@@ -390,14 +415,14 @@ function Particle () {
 function init_particle (p) {
 
     // Generate Initial Position
-	p.position_initial[0] = Math.random() * 0.2 + 2.0;
-	p.position_initial[1] = Math.random() * 0.2 + 2.0;
-	p.position_initial[2] = Math.random() * 0.2;
+	p.position_initial[0] = Math.random() * 0.5 + 2.0;
+	p.position_initial[1] = Math.random() * 4.0 - 2.0;
+	p.position_initial[2] = Math.random() * 0.5;
 
 	// Generate Final Position
-	p.position_final[0] = Math.random() * 0.2 - 2.0;
-	p.position_final[1] = Math.random() * 0.2 + 2.0;
-	p.position_final[2] = Math.random() * 0.2;
+	p.position_final[0] = Math.random() * 0.05 - 2.0;
+	p.position_final[1] = Math.random() * 0.05;
+	p.position_final[2] = Math.random() * 0.05;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -406,9 +431,9 @@ function init_particle (p) {
 
     // Generate Default Data
     p.alpha = 1;
-    p.wait = Math.random() * 300;
+    p.wait = Math.random() * config.LOOP_TIME;
     p.brightness = 1;
-    p.seed = Math.random() * 1000;
+    p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 }
 
 function create_fbos (pa) {
