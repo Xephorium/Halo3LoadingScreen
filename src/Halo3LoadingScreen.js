@@ -24,7 +24,7 @@ let vertex_particle = `#version 300 es
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = 5.0;
+		gl_PointSize = 10.0;
 		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
@@ -43,12 +43,7 @@ let frag_particle = `#version 300 es
 	out vec4 cg_FragColor; 
 
 	void main() {
-		vec4 cout = vec4(0.0); // by default, don't draw this particle
 		float alpha = texture(u_data, v_texcoord).r;
-		float wait = texture(u_data, v_texcoord).g;
-		
-// 		if (wait < 0.0) cout = vec4(0.2, 0.2, 0.2, alpha);
-// 		// wait time has expired, so draw this particle
 		cg_FragColor = vec4(0.9, 0.9, 1.0, alpha);  
 	}
 `;
@@ -137,8 +132,7 @@ let frag_position = `#version 300 es
 		vec4 final_position = texture(texture_final_position, v_coord);
 		float wait = texture(texture_data, v_coord).g;
 		float seed = texture(texture_data, v_coord).a;
-		float delayed_time = max(time - time_delay, 0.0);
-		float factor = mod(max(delayed_time - wait, 0.0), time_loop) / time_loop;
+		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
 
 		// Generate Middle Position
 		vec4 middle_position = generate_detour_point(initial_position, final_position, seed);
@@ -169,10 +163,9 @@ let frag_data = `#version 300 es
 		float alpha = texture(texture_data, v_coord).r;
         float wait = texture(texture_data, v_coord).g;
         float seed = texture(texture_data, v_coord).a;
-        float delayed_time = max(time - time_delay, 0.0);
-		float factor = mod(max(delayed_time - wait, 0.0), time_loop) / time_loop;
+		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
 
-        //alpha = pow(factor, 2.0);
+		alpha = factor * 2.0;
 		    
         cg_FragColor = vec4(alpha, wait, 0.0, seed);
 	}	
@@ -210,15 +203,16 @@ const frag_display = `#version 300 es
 
 let config = {
 	GLOBAL_DELAY: 1000,
-	LOOP_TIME:2500,
+	LOOP_TIME:4000,
 	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    TEXTURE_SIZE: 10                         // Value squared is max particle count.
+    TEXTURE_SIZE: 10                          // Value squared is max particle count.
 }
 
 
 /*--- Variable Declarations ---*/
 
+let start = new Date();
 let time = 0.0;
 
 let gl, canvas;
@@ -258,7 +252,6 @@ class GLProgram {
     constructor (vertex_shader, frag_shader) {
         this.attributes = {};
         this.uniforms = {};
-        this.program = gl.createProgram();
 
         this.program = cg_init_shaders(gl, vertex_shader, frag_shader);
 
@@ -309,16 +302,14 @@ function main () {
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
     canvas.height = 1080 * config.RESOLUTION_SCALE;
-
-	prog_particle = new GLProgram(vertex_particle, frag_particle);
-	prog_particle.bind();
-
-    prog_display = new GLProgram(vertex_display, frag_display);
 	
 	prog_position_initial = new GLProgram(vertex_display, frag_position_initial);
 	prog_position_final = new GLProgram(vertex_display, frag_position_final);
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
+
+    prog_particle = new GLProgram(vertex_particle, frag_particle);
+	prog_particle.bind();
 
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
 	g_view_mat.setLookAt(0, 0, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector    
@@ -329,7 +320,6 @@ function main () {
 
 	// Create particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE); 
-
 	for (let i = 0; i < pa.length; ++i) {
 		pa[i] = new Particle();
 		init_particle(pa[i]);
@@ -363,9 +353,9 @@ function main () {
         
 	    draw_particle(fbo_pos, fbo_data, pa);
 
-	    time = performance.now();
-
 		requestAnimationFrame(update);
+
+		time = new Date() - start;
 	};
 	update(); 
 }
@@ -406,8 +396,8 @@ function Particle () {
 	this.position_initial = new Array(3);
 	this.position_final = new Array(3);
 	this.position = new Array(3);
-	this.alpha = 1;
-	this.wait = 0;
+	this.alpha = 0.0;
+	this.wait = 0.0;
 	this.brightness = 1;
 	this.seed = 0;
 }
@@ -430,9 +420,7 @@ function init_particle (p) {
 	p.position[2] = p.position_initial[2];
 
     // Generate Default Data
-    p.alpha = 1;
     p.wait = Math.random() * config.LOOP_TIME;
-    p.brightness = 1;
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 }
 
@@ -574,35 +562,6 @@ function cg_init_framebuffers() {
     fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_data = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
-}
-
-// render to default framebuffer
-function render_null (src) {
-    let program = prog_display;
-    program.bind();
-
-    if (src.single) gl.uniform1i(program.uniforms.u_image, src.attach(7));
-    else gl.uniform1i(program.uniforms.u_image, src.read.attach(7));
-
-    gl.viewport(0, 0, canvas.width, canvas.height);
-
-    draw_vao_image(null);
-}
-
-function render_img (src, dst) {
-    let program = prog_display;
-    program.bind();
-
-    if (src.single) gl.uniform1i(program.uniforms.u_image, src.attach(8));
-    else gl.uniform1i(program.uniforms.u_image, src.read.attach(8));
-    
-    gl.viewport(0, 0, dst.width, dst.height);
- 
-    if (dst.single) draw_vao_image(dst.fbo);
-    else {
-        draw_vao_image(dst.write.fbo);
-        dst.swap();
-    }  
 }
 
 
