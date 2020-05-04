@@ -58,7 +58,6 @@ let frag_position_initial = `#version 300 es
 
     // Input Variables
 	uniform sampler2D texture_initial_position;
-	uniform sampler2D texture_data;
 	in vec2 v_coord;
 
     // Output Variables
@@ -73,13 +72,69 @@ let frag_position_initial = `#version 300 es
 
         // Conditionally Generate Particle Starting Position
         vec4 initial_position = texture(texture_initial_position, v_coord);
-		if (initial_position.x == 0.0 && initial_position.y == 0.0 && initial_position.z == 0.0) {
-			initial_position.x = random(v_coord * 10.0) * 0.2;
-			initial_position.y = random(v_coord * 20.0) * 0.2;
-			initial_position.z = random(v_coord * 30.0) * 0.2;
-		}
+   		if (initial_position.x == 0.0 && initial_position.y == 0.0 && initial_position.z == 0.0) {
+ 			initial_position.x = random(v_coord * 10.0) * 0.2 + 2.0;
+ 			initial_position.y = random(v_coord * 20.0) * 0.2 + 2.0;
+ 			initial_position.z = random(v_coord * 30.0) * 0.2;
+ 		}
 
 	    cg_FragColor = initial_position;
+	}
+`;
+
+let frag_position_final = `#version 300 es
+	precision mediump float;
+
+    // Input Variables
+	uniform sampler2D texture_final_position;
+	in vec2 v_coord;
+
+    // Output Variables
+	out vec4 cg_FragColor; 
+
+    // Define Random Function
+	float random(vec2 p) {
+    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
+	}
+
+	void main() {
+
+        // Conditionally Generate Particle Starting Position
+        vec4 final_position = texture(texture_final_position, v_coord);
+		if (final_position.x == 0.0 && final_position.y == 0.0 && final_position.z == 0.0) {
+			final_position.x = random(v_coord * 10.0) * 0.2 - 2.0;
+			final_position.y = random(v_coord * 20.0) * 0.2 + 2.0;
+			final_position.z = random(v_coord * 30.0) * 0.2;
+		}
+
+	    cg_FragColor = final_position;
+	}
+`;
+
+let frag_position = `#version 300 es
+	precision mediump float;
+
+    // Input Variables
+    uniform sampler2D texture_initial_position;
+	uniform sampler2D texture_final_position;
+	uniform sampler2D texture_position;
+	uniform sampler2D texture_data;
+	in vec2 v_coord;
+
+    // Output Variables
+	out vec4 cg_FragColor; 
+
+    // Define Random Function
+	float random(vec2 p) {
+    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
+	}
+
+	void main() {
+
+        // Conditionally Generate Particle Starting Position
+        vec4 position = texture(texture_position, v_coord);
+
+	    cg_FragColor = position - vec4(0.05, 0.0, 0.0, 0.0);
 	}
 `;
 
@@ -168,10 +223,12 @@ let prog_particle;         // particle renderer
 let prog_display;          // fbo renderer
 let prog_position_initial; // Particle Initial Position Updater
 let prog_position_final;   // Particle Final Position Updater
+let prog_position;         // Particle Position Updater
 let prog_data;             // Particle Data Updater
 
 let fbo_pos_initial;       // Particle Initial Position
 let fbo_pos_final;         // Particle Final Position
+let fbo_pos;               // Particle Position
 let fbo_data;              // Particle Metadata
 
 
@@ -235,7 +292,8 @@ function main () {
     prog_display = new GLProgram(vertex_display, frag_display);
 	
 	prog_position_initial = new GLProgram(vertex_display, frag_position_initial);
-	//prog_position_final = new GLProgram(vertex_display, frag_position_final);
+	prog_position_final = new GLProgram(vertex_display, frag_position_final);
+	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
 
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
@@ -276,9 +334,10 @@ function main () {
 
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		update_position_initial(fbo_pos_initial, fbo_data);
-	    //update_position_final(fbo_pos_final);
+		update_position_initial(fbo_pos_initial);
+	    update_position_final(fbo_pos_final);
 		update_data(fbo_data);
+		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data);
         
 	    draw_particle(fbo_pos_initial, fbo_pos_final, fbo_data, pa);
 
@@ -322,6 +381,7 @@ function send_buffer_data (pa) {
 function Particle () {
 	this.position_initial = new Array(3);
 	this.position_final = new Array(3);
+	this.position = new Array(3);
 	this.alpha = 0;
 	this.wait = 0;
 	this.brightness = 1;
@@ -331,14 +391,19 @@ function Particle () {
 function init_particle (p, wait) {
 
     // Generate Initial Position
-	p.position_initial[0] = Math.random() * 0.2;
-	p.position_initial[1] = Math.random() * 0.2;
+	p.position_initial[0] = Math.random() * 0.2 + 2.0;
+	p.position_initial[1] = Math.random() * 0.2 + 2.0;
 	p.position_initial[2] = Math.random() * 0.2;
 
 	// Generate Final Position
-	p.position_final[0] = Math.random() * 0.2;
-	p.position_final[1] = Math.random() * 0.2;
+	p.position_final[0] = Math.random() * 0.2 - 2.0;
+	p.position_final[1] = Math.random() * 0.2 + 2.0;
 	p.position_final[2] = Math.random() * 0.2;
+
+    // Generate Position
+	p.position[0] = p.position_initial[0];
+	p.position[1] = p.position_initial[1];
+	p.position[2] = p.position_initial[2];
 
     // Generate Default Data
     p.alpha = 1;
@@ -351,6 +416,7 @@ function create_fbos (pa) {
 
 	let position_initial = [];
 	let position_final = [];
+	let position = [];
 	let data = [];
 
 	for (let i = 0; i < pa.length; ++i) {
@@ -364,6 +430,11 @@ function create_fbos (pa) {
 		position_final.push(pa[i].position_initial[2]); // z
 		position_final.push(1);                         // w
 
+		position.push(pa[i].position[0]); // x
+		position.push(pa[i].position[1]); // y
+		position.push(pa[i].position[2]); // z
+		position.push(1);                 // w
+
 		data.push(pa[i].alpha);     // x
 		data.push(pa[i].wait);      // y
 		data.push(pa[i].bightness); // z
@@ -373,6 +444,7 @@ function create_fbos (pa) {
     // add texture image to fbo
 	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
 	fbo_pos_final.read.addTexture(new Float32Array(position_final));
+	fbo_pos.read.addTexture(new Float32Array(position));
 	fbo_data.read.addTexture(new Float32Array(data));
 }
 
@@ -475,6 +547,7 @@ function cg_init_framebuffers() {
 
     fbo_pos_initial = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_pos_final = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_data = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
 }
@@ -525,15 +598,12 @@ function update_data (data) {
     }  
 }
 
-function update_position_initial (position_initial, data) {
+function update_position_initial (position_initial) {
     let program = prog_position_initial;
     program.bind();
 
     if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
     else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
-    
-    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(3));
-    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(3));
     
     gl.viewport(0, 0, position_initial.width, position_initial.height);
  
@@ -544,24 +614,46 @@ function update_position_initial (position_initial, data) {
     }  
 }
 
-// function update_position_final (position_final, data) {
-//     let program = prog_position_final;
-//     program.bind();
+function update_position_final (position_final) {
+    let program = prog_position_final;
+    program.bind();
 
-//     if (position_final.single) gl.uniform1i(program.uniforms.u_pos, position_final.attach(1));
-//     else gl.uniform1i(program.uniforms.u_pos, position_final.read.attach(1));
+    if (position_final.single) gl.uniform1i(program.uniforms.texture_final_position, position_final.attach(1));
+    else gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(1));
     
-//     if (data.single) gl.uniform1i(program.uniforms.u_data, data.attach(3));
-//     else gl.uniform1i(program.uniforms.u_data, data.read.attach(3));
-    
-//     gl.viewport(0, 0, position_final.width, position_final.height);
+    gl.viewport(0, 0, position_final.width, position_final.height);
  
-//     if (position_final.single) draw_vao_image(position_final.fbo);
-//     else {
-//         draw_vao_image(position_final.write.fbo);
-//         position_final.swap();
-//     }  
-// }
+    if (position_final.single) draw_vao_image(position_final.fbo);
+    else {
+        draw_vao_image(position_final.write.fbo);
+        position_final.swap();
+    }  
+}
+
+function update_position (position_initial, position_final, position, data) {
+    let program = prog_position;
+    program.bind();
+
+    if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
+    else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
+
+    if (position_final.single) gl.uniform1i(program.uniforms.texture_final_position, position_final.attach(2));
+    else gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(2));
+
+    if (position.single) gl.uniform1i(program.uniforms.texture_position, position.attach(3));
+    else gl.uniform1i(program.uniforms.texture_position, position.read.attach(3));
+
+    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(4));
+    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(4));
+    
+    gl.viewport(0, 0, position.width, position.height);
+ 
+    if (position.single) draw_vao_image(position.fbo);
+    else {
+        draw_vao_image(position.write.fbo);
+        position.swap();
+    }  
+}
 
 function draw_particle (position_initial, position_final, data, pa) {
     let program = prog_particle;
