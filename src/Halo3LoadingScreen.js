@@ -103,11 +103,20 @@ let frag_position = `#version 300 es
     // Output Variables
 	out vec4 cg_FragColor;
 
-    // Procedural Amplitude Generator
-	float generate_amplitude(float value_one, float value_two) {
+    // Procedural Float Generator [0, 1]
+	float generate_float(float value_one, float value_two) {
 	    float seed_one = 78.0;
 	    float seed_two = 1349.0;
 	    return mod(value_one * seed_one + value_two * seed_two, 20.0) / 20.0;
+	}
+
+	// Quadratic Spline Interpolator
+	// Algorithm Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
+	vec4 interpolate_location(vec4 v1, vec4 v2, vec4 v3, float t) {
+         float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);
+         float y = (((1.0 - t) * (1.0 - t)) * v1.y) + (2.0 * t * (1.0 - t) * v2.y) + ((t * t) * v3.y);
+         float z = (((1.0 - t) * (1.0 - t)) * v1.z) + (2.0 * t * (1.0 - t) * v2.z) + ((t * t) * v3.z);
+         return vec4(x, y, z, 1.0);
 	}
 
 	void main() {
@@ -115,8 +124,11 @@ let frag_position = `#version 300 es
 		vec4 final_position = texture(texture_final_position, v_coord);
 		float factor = mod(time, time_loop) / time_loop;
 
+		// Generate Middle Position
+		vec4 middle_position = vec4(0.0, 3.0, 0.0, 0.0);
+
 		// Perform Linear Interpolation Between Points
-		vec4 position = mix(initial_position, final_position, factor);
+		vec4 position = interpolate_location(initial_position, middle_position, final_position, factor);
 
         cg_FragColor = position;
 	}
