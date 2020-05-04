@@ -132,9 +132,9 @@ let frag_position = `#version 300 es
 	}
 
 	void main() {
-        vec4 position = texture(texture_position, v_coord);
+		vec4 position = texture(texture_position, v_coord);
 
-	    cg_FragColor = position - vec4(0.01, 0.0, 0.0, 0.0);
+        cg_FragColor = position - vec4(0.01, 0.0, 0.0, 0.0);
 	}
 `;
 
@@ -345,7 +345,7 @@ function main () {
         
 	    draw_particle(fbo_pos, fbo_data, pa);
 
-	    time = performance.now();
+	    time += 1.0;
 
 		requestAnimationFrame(update);
 	};
