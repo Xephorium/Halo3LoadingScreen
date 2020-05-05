@@ -48,41 +48,6 @@ let frag_particle = `#version 300 es
 	}
 `;
 
-let frag_position_initial = `#version 300 es
-	precision mediump float;
-
-    // Input Variables
-	uniform sampler2D texture_initial_position;
-	in vec2 v_coord;
-
-    // Output Variables
-	out vec4 cg_FragColor; 
-
-	void main() {
-        // Persist Initial Position
-        vec4 initial_position = texture(texture_initial_position, v_coord);
-	    cg_FragColor = initial_position;
-	}
-`;
-
-let frag_position_final = `#version 300 es
-	precision mediump float;
-
-    // Input Variables
-	uniform sampler2D texture_final_position;
-	in vec2 v_coord;
-
-    // Output Variables
-	out vec4 cg_FragColor; 
-
-	void main() {
-
-        // Persist Final Position
-        vec4 final_position = texture(texture_final_position, v_coord);
- 	    cg_FragColor = final_position;
-	}
-`;
-
 let frag_position = `#version 300 es
 	precision mediump float;
 
@@ -203,7 +168,7 @@ const frag_display = `#version 300 es
 
 let config = {
 	GLOBAL_DELAY: 1000,
-	LOOP_TIME:4000,
+	LOOP_TIME:8000,
 	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     TEXTURE_SIZE: 10                          // Value squared is max particle count.
@@ -229,8 +194,6 @@ let g_index_buffer;
 
 let prog_particle;         // Particle Renderer
 let prog_display;          // FBO Renderer
-let prog_position_initial; // Particle Initial Position Updater
-let prog_position_final;   // Particle Final Position Updater
 let prog_position;         // Particle Position Updater
 let prog_data;             // Particle Data Updater
 
@@ -302,9 +265,7 @@ function main () {
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
     canvas.height = 1080 * config.RESOLUTION_SCALE;
-	
-	prog_position_initial = new GLProgram(vertex_display, frag_position_initial);
-	prog_position_final = new GLProgram(vertex_display, frag_position_final);
+
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
 
@@ -564,7 +525,6 @@ function cg_init_framebuffers() {
 
 }
 
-
 function update_data (data, loop_time) {
     let program = prog_data;
     program.bind_time();
@@ -578,38 +538,6 @@ function update_data (data, loop_time) {
     else {
         draw_vao_image(data.write.fbo);
         data.swap();
-    }  
-}
-
-function update_position_initial (position_initial) {
-    let program = prog_position_initial;
-    program.bind();
-
-    if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
-    else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
-    
-    gl.viewport(0, 0, position_initial.width, position_initial.height);
- 
-    if (position_initial.single) draw_vao_image(position_initial.fbo);
-    else {
-        draw_vao_image(position_initial.write.fbo);
-        position_initial.swap();
-    }  
-}
-
-function update_position_final (position_final, currentTime) {
-    let program = prog_position_final;
-    program.bind();
-
-    if (position_final.single) gl.uniform1i(program.uniforms.texture_final_position, position_final.attach(1));
-    else gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(1));
-    
-    gl.viewport(0, 0, position_final.width, position_final.height);
- 
-    if (position_final.single) draw_vao_image(position_final.fbo);
-    else {
-        draw_vao_image(position_final.write.fbo);
-        position_final.swap();
     }  
 }
 
