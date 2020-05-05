@@ -11,6 +11,97 @@
 
 /*--- Shader Declarations ---*/
 
+let frag_position = `#version 300 es
+	precision mediump float;
+
+    // Input Variables
+    uniform sampler2D texture_initial_position;
+	uniform sampler2D texture_final_position;
+	uniform sampler2D texture_position;
+	uniform sampler2D texture_data;
+	uniform float time;
+	uniform float time_loop;
+	uniform float time_delay;
+	in vec2 v_coord; // UV coordinate of current point.
+
+    // Output Variables
+	out vec4 cg_FragColor;
+
+    // Procedural Float Generator [-1, 1]
+    // Note: Consistently returns the same pseudo-random float for the same two input values.  
+	float generate_float(float value_one, float value_two) {
+	    float seed_one = 78.0;
+	    float seed_two = 1349.0;
+	    float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
+	    return magnitude;
+	}
+
+	// Detour Point Generator
+	vec4 generate_detour_position(vec4 p1, vec4 p2, float seed) {
+		vec4 detour = mix(p1, p2, 0.5);
+		return vec4(
+            detour[0],
+            detour[1]  + generate_float(3.0, seed) * 1.0,
+            detour[2],
+            detour[3]
+		);
+	}
+
+	// Quadratic Spline Interpolator
+	// Note: Returns a position in 3D space representing a particle's location on
+	//       a smooth bezier curve between three points. 
+	// Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
+	vec4 interpolate_location(vec4 v1, vec4 v2, vec4 v3, float t) {
+         float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);
+         float y = (((1.0 - t) * (1.0 - t)) * v1.y) + (2.0 * t * (1.0 - t) * v2.y) + ((t * t) * v3.y);
+         float z = (((1.0 - t) * (1.0 - t)) * v1.z) + (2.0 * t * (1.0 - t) * v2.z) + ((t * t) * v3.z);
+         return vec4(x, y, z, 1.0);
+	}
+
+	void main() {
+		vec4 initial_position = texture(texture_initial_position, v_coord);
+		vec4 final_position = texture(texture_final_position, v_coord);
+		float wait = texture(texture_data, v_coord).g;
+		float seed = texture(texture_data, v_coord).a;
+		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
+
+		// Generate Detour Position (For gently curved particle trajectory)
+		vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
+
+		// Find Current Position Along Trajectory Curve
+		vec4 position = interpolate_location(initial_position, detour_position, final_position, factor);
+
+        cg_FragColor = position;
+	}
+`;
+
+let frag_data = `#version 300 es
+	precision mediump float;
+
+	uniform sampler2D texture_data;
+	uniform float time;
+	uniform float time_loop;
+	uniform float time_delay;
+	in vec2 v_coord;
+
+	out vec4 cg_FragColor; 
+
+	float random(vec2 p) {
+    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
+	}
+
+	void main() {
+		float alpha = texture(texture_data, v_coord).r;
+        float wait = texture(texture_data, v_coord).g;
+        float seed = texture(texture_data, v_coord).a;
+		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
+
+		alpha = factor * 2.0;
+		    
+        cg_FragColor = vec4(alpha, wait, 0.0, seed);
+	}	
+`;
+
 let vertex_particle = `#version 300 es
   
 	in vec2 a_texcoord; // texcoord associated with this particle
@@ -46,94 +137,6 @@ let frag_particle = `#version 300 es
 		float alpha = texture(u_data, v_texcoord).r;
 		cg_FragColor = vec4(0.9, 0.9, 1.0, alpha);  
 	}
-`;
-
-let frag_position = `#version 300 es
-	precision mediump float;
-
-    // Input Variables
-    uniform sampler2D texture_initial_position;
-	uniform sampler2D texture_final_position;
-	uniform sampler2D texture_position;
-	uniform sampler2D texture_data;
-	uniform float time;
-	uniform float time_loop;
-	uniform float time_delay;
-	in vec2 v_coord;
-
-    // Output Variables
-	out vec4 cg_FragColor;
-
-    // Procedural Float Generator [-1, 1]
-	float generate_float(float value_one, float value_two) {
-	    float seed_one = 78.0;
-	    float seed_two = 1349.0;
-	    float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
-	    return magnitude;
-	}
-
-	// Detour Point Generator
-	vec4 generate_detour_point(vec4 p1, vec4 p2, float seed) {
-		vec4 middle = mix(p1, p2, 0.5);
-		return vec4(
-            middle[0],
-            middle[1]  + generate_float(3.0, seed) * 1.0,
-            middle[2],
-            middle[3]
-		);
-	}
-
-	// Quadratic Spline Interpolator
-	// Algorithm Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
-	vec4 interpolate_location(vec4 v1, vec4 v2, vec4 v3, float t) {
-         float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);
-         float y = (((1.0 - t) * (1.0 - t)) * v1.y) + (2.0 * t * (1.0 - t) * v2.y) + ((t * t) * v3.y);
-         float z = (((1.0 - t) * (1.0 - t)) * v1.z) + (2.0 * t * (1.0 - t) * v2.z) + ((t * t) * v3.z);
-         return vec4(x, y, z, 1.0);
-	}
-
-	void main() {
-		vec4 initial_position = texture(texture_initial_position, v_coord);
-		vec4 final_position = texture(texture_final_position, v_coord);
-		float wait = texture(texture_data, v_coord).g;
-		float seed = texture(texture_data, v_coord).a;
-		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
-
-		// Generate Middle Position
-		vec4 middle_position = generate_detour_point(initial_position, final_position, seed);
-
-		// Perform Linear Interpolation Between Points
-		vec4 position = interpolate_location(initial_position, middle_position, final_position, factor);
-
-        cg_FragColor = position;
-	}
-`;
-
-let frag_data = `#version 300 es
-	precision mediump float;
-
-	uniform sampler2D texture_data;
-	uniform float time;
-	uniform float time_loop;
-	uniform float time_delay;
-	in vec2 v_coord;
-
-	out vec4 cg_FragColor; 
-
-	float random(vec2 p) {
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
-	}
-
-	void main() {
-		float alpha = texture(texture_data, v_coord).r;
-        float wait = texture(texture_data, v_coord).g;
-        float seed = texture(texture_data, v_coord).a;
-		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
-
-		alpha = factor * 2.0;
-		    
-        cg_FragColor = vec4(alpha, wait, 0.0, seed);
-	}	
 `;
 
 const vertex_display = `#version 300 es
@@ -525,22 +528,6 @@ function cg_init_framebuffers() {
 
 }
 
-function update_data (data, loop_time) {
-    let program = prog_data;
-    program.bind_time();
-
-    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
-    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
-
-    gl.viewport(0, 0, data.width, data.height);
- 
-    if (data.single) draw_vao_image(data.fbo);
-    else {
-        draw_vao_image(data.write.fbo);
-        data.swap();
-    }  
-}
-
 function update_position (position_initial, position_final, position, data, loop_time) {
     let program = prog_position;
     program.bind_time();
@@ -563,6 +550,22 @@ function update_position (position_initial, position_final, position, data, loop
     else {
         draw_vao_image(position.write.fbo);
         position.swap();
+    }  
+}
+
+function update_data (data, loop_time) {
+    let program = prog_data;
+    program.bind_time();
+
+    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
+    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
+
+    gl.viewport(0, 0, data.width, data.height);
+ 
+    if (data.single) draw_vao_image(data.fbo);
+    else {
+        draw_vao_image(data.write.fbo);
+        data.swap();
     }  
 }
 
