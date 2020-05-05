@@ -96,7 +96,7 @@ let frag_data = `#version 300 es
         float seed = texture(texture_data, v_coord).a;
 		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
 
-		alpha = factor * 2.0;
+		alpha = factor;
 		    
         cg_FragColor = vec4(alpha, wait, 0.0, seed);
 	}	
@@ -245,12 +245,8 @@ class GLProgram {
 
     bind_time() {
     	var location_time = gl.getUniformLocation(this.program, "time");
-    	var location_time_loop = gl.getUniformLocation(this.program, "time_loop");
-    	var location_time_delay = gl.getUniformLocation(this.program, "time_delay");
     	gl.useProgram(this.program);
         gl.uniform1f(location_time, time);
-        gl.uniform1f(location_time_loop, config.LOOP_TIME);
-        gl.uniform1f(location_time_delay, config.GLOBAL_DELAY);
     }
 }
 
@@ -404,7 +400,7 @@ function create_fbos (pa) {
 		position_final.push(pa[i].position_final[0]); // x
 		position_final.push(pa[i].position_final[1]); // y
 		position_final.push(pa[i].position_final[2]); // z
-		position_final.push(1);                         // w
+		position_final.push(1);                       // w
 
 		position.push(pa[i].position[0]); // x
 		position.push(pa[i].position[1]); // y
@@ -528,7 +524,7 @@ function cg_init_framebuffers() {
 
 }
 
-function update_position (position_initial, position_final, position, data, loop_time) {
+function update_position (position_initial, position_final, position, data) {
     let program = prog_position;
     program.bind_time();
 
@@ -544,6 +540,10 @@ function update_position (position_initial, position_final, position, data, loop
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(4));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(4));
 
+    gl.uniform1f(program.uniforms.time_loop, config.LOOP_TIME);
+    
+    gl.uniform1f(program.uniforms.time_delay, config.GLOBAL_DELAY);
+
     gl.viewport(0, 0, position.width, position.height);
  
     if (position.single) draw_vao_image(position.fbo);
@@ -553,12 +553,16 @@ function update_position (position_initial, position_final, position, data, loop
     }  
 }
 
-function update_data (data, loop_time) {
+function update_data (data) {
     let program = prog_data;
     program.bind_time();
 
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
+
+    gl.uniform1f(program.uniforms.time_loop, config.LOOP_TIME);
+    
+    gl.uniform1f(program.uniforms.time_delay, config.GLOBAL_DELAY);
 
     gl.viewport(0, 0, data.width, data.height);
  
