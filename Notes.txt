@@ -24,6 +24,33 @@ Ambient Particle Animation Requirements
   - TBD. Likely animated perlin noise used for pseudorandom drift.
 
 
+/*--- Texture Data ---*/
+
+Initial Position
+  R: x pos
+  G: y pos
+  B: z pos
+  A: ---
+
+Final Position
+  R: x pos
+  G: y pos
+  B: z pos
+  A: ---
+
+Position
+  R: x pos
+  G: y pos
+  B: z pos
+  A: ---
+
+Data
+  R: Alpha
+  G: Wait
+  B: Brightness
+  A: Seed
+
+
 /*--- Pseudocode ---*/
 
 Shader: Position Initial
