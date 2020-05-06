@@ -26,7 +26,7 @@ Ambient Particle Animation Requirements
 
 /*--- Texture Data ---*/
 
-Initial Position
+Initial Position // If (0, 0, 0), Particle Disabled
   R: x pos
   G: y pos
   B: z pos
@@ -73,3 +73,13 @@ Dynamic Velocity Smoothing Equation (Used for each ring particle's path.)
     s(t) = Smooth interpolation from 0 to 1 given input t
     t    = time
 
+
+/*--- Painful Lessons ---*/
+
+1. JavaScript's decimal math is broken. Any operation that would suffer from unpredictable
+   rounding errors should make use of an external library. I particularly like decimal.js.
+
+2. Even if no operation is performed on a given frame buffer object, its values will
+   subtly change over time when returned from a shader. I spent about four hours pulling
+   my hair out trying to discern why each particle's unchanging wait value became more
+   random over the course of each simulation.
