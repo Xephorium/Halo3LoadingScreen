@@ -253,9 +253,8 @@ class GLProgram {
     }
 
     bind_time() {
-    	var location_time = gl.getUniformLocation(this.program, "time");
     	gl.useProgram(this.program);
-        gl.uniform1f(location_time, time);
+        gl.uniform1f(this.uniforms.time, time);
     }
 }
 
