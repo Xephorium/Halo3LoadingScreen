@@ -12,17 +12,19 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:8000,                         // Length of full animation
+    LENGTH_LOOP:21000,                         // Length of full animation
 	LENGTH_START_DELAY: 1000,
-	LENGTH_RING_ASSEMBLY: 7000,
+	LENGTH_RING_ASSEMBLY: 19000,
 	LENGTH_SLICE_ASSEMBLY: 2000,
-	LENGTH_PARTICLE_FADE: 2000,               // Length of each particle's fade-in
+	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
+	LENGTH_SCENE_FADE: 2000,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 100,                         // Final = 2096
+    RING_SLICES: 1200,                         // Final = 2096
     RING_RADIUS: 3,
-    TEXTURE_SIZE: 10,                         // Value squared is max particle count.
-    PARTICLE_SIZE: 2
+    TEXTURE_SIZE: 50,                         // Value squared is max particle count
+    PARTICLE_SIZE: 2,
+    PARTICLE_WAIT_VARIATION: 100               // Amount of random flux in particle wait
 }
 
 
@@ -60,7 +62,7 @@ let frag_position = `#version 300 es
 		vec4 detour = mix(p1, p2, 0.5);
 		return vec4(
             detour[0],
-            detour[1],  //+ generate_float(3.0, seed) * 1.0,
+            detour[1] + generate_float(3.0, seed) * 0.1,
             detour[2],
             detour[3]
 		);
@@ -109,6 +111,7 @@ let frag_data = `#version 300 es
 	uniform float length_loop;
 	uniform float length_start_delay;
 	uniform float length_particle_fade;
+	uniform float length_scene_fade;
 	in vec2 v_coord;
 
 	out vec4 cg_FragColor; 
@@ -126,7 +129,9 @@ let frag_data = `#version 300 es
         float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
 
 		alpha = 0.0;
-		if (disabled == 0.0 && delay_time > wait) {
+		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
+			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0);
+		} else if (disabled == 0.0 && delay_time > wait) {
 			alpha = min((delay_time - wait) / length_particle_fade, 1.0);
 		}
 		    
@@ -403,17 +408,17 @@ function Particle () {
 
 function initialize_active_particle (p, slice) {
 
-    // Generate Initial Position
-	p.position_initial[0] = 0.0; //Math.random() * 0.5 + 2.0;
-	p.position_initial[1] = 0.0; //Math.random() * 4.0 - 2.0;
-	p.position_initial[2] = 0.0; //Math.random() * 0.5;
-
-	// Generate Final Position
+    // Generate Final Position
 	let position_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS; // Math.random() * 0.05 - 2.0;
 	let position_z = Math.sin(2 * Math.PI * (slice / config.RING_SLICES)) * config.RING_RADIUS; //Math.random() * 0.05;
 	p.position_final[0] = position_x;
 	p.position_final[1] = 0.0;
 	p.position_final[2] = position_z;
+
+    // Generate Initial Position
+	p.position_initial[0] = p.position_final[0] + ((Math.random() - 0.5) * 0.1);
+	p.position_initial[1] = p.position_final[1] + ((Math.random() - 0.5) * 0.1);
+	p.position_initial[2] = p.position_final[2] + ((Math.random() - 0.5) * 0.1);
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -424,7 +429,8 @@ function initialize_active_particle (p, slice) {
     let wait_window = config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY;
     let slice_wait = new Decimal(wait_window).dividedBy(new Decimal(config.RING_SLICES - 1));
     let base_wait = slice_wait.times(new Decimal(slice));
-    p.wait = base_wait.toPrecision(5);
+    let final_wait = base_wait.plus((new Decimal(Math.random())).times(new Decimal(config.PARTICLE_WAIT_VARIATION)));
+    p.wait = final_wait.toPrecision(5);
 
     // Generate Seed
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
@@ -651,6 +657,7 @@ function update_data (data_dynamic, data_static) {
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
+    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
 
     gl.viewport(0, 0, data_dynamic.width, data_dynamic.height);
  
