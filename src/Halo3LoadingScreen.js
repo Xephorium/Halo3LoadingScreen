@@ -12,12 +12,12 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:21000,                         // Length of full animation
+    LENGTH_LOOP:20500,                         // Length of full animation
 	LENGTH_START_DELAY: 800,
 	LENGTH_RING_ASSEMBLY: 19000,
 	LENGTH_SLICE_ASSEMBLY: 2000,
 	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
-	LENGTH_SCENE_FADE: 2000,                  // Length of scene fade-out
+	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 1200,                        // Final = 2096
