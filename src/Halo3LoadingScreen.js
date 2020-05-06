@@ -41,7 +41,7 @@ let frag_position = `#version 300 es
 		vec4 detour = mix(p1, p2, 0.5);
 		return vec4(
             detour[0],
-            detour[1]  + generate_float(3.0, seed) * 1.0,
+            detour[1],  //+ generate_float(3.0, seed) * 1.0,
             detour[2],
             detour[3]
 		);
@@ -96,7 +96,7 @@ let frag_data = `#version 300 es
         float seed = texture(texture_data, v_coord).a;
 		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
 
-		alpha = factor;
+		alpha = 1.0;//factor;
 		    
         cg_FragColor = vec4(alpha, wait, 0.0, seed);
 	}	
@@ -172,9 +172,11 @@ const frag_display = `#version 300 es
 let config = {
 	GLOBAL_DELAY: 1000,
 	LOOP_TIME:8000,
-	RESOLUTION_SCALE: 1.0,                   // Default: 1080p
+	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    TEXTURE_SIZE: 10                          // Value squared is max particle count.
+    RING_SLICES: 100,                         // Final = 2096
+    RING_RADIUS: 3,
+    TEXTURE_SIZE: 12                          // Value squared is max particle count.
 }
 
 
@@ -272,18 +274,35 @@ function main () {
 	prog_particle.bind();
 
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
-	g_view_mat.setLookAt(0, 0, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector    
+	g_view_mat.setLookAt(0, 5, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector    
 
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
 
-	// Create particles
-	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE); 
-	for (let i = 0; i < pa.length; ++i) {
-		pa[i] = new Particle();
-		init_particle(pa[i]);
+	// Create Ring Particles
+	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
+	let particle_index = 0; 
+	for (let x = 0; x < config.RING_SLICES; x++) {
+		pa[x] = new Particle();
+		initialize_active_particle(pa[x], x);
+		particle_index = particle_index + 1;
 	}
+
+	// Create Disabled Particles
+	for (let x = particle_index; x < pa.length; x++) {
+		pa[x] = new Particle();
+		initialize_disabled_particle(pa[x]);
+	}
+
+    // Log Particle Initialization
+// 	for (let x = 0; x < pa.length; x++) {
+// 		if (!(pa[x].position_final[0] == 0.0 && pa[x].position_final[1] == 0.0 && pa[x].position_final[2] == 0.0)) {
+// 			console.log("Enabled particle");
+// 		} else {
+// 			console.log("Disabled particle");
+// 		}
+// 	}
 
    	vao_image_create();
 
@@ -291,7 +310,7 @@ function main () {
 	create_fbos(pa);        // initialize fbo data
 
 	init_buffers(prog_particle); 
-	send_buffer_data(pa);
+	send_texture_coordinates_to_gpu(pa);
 
     gl.clearColor(
         config.BACKGROUND_COLOR[0],
@@ -311,7 +330,7 @@ function main () {
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data);
 		update_data(fbo_data);
         
-	    draw_particle(fbo_pos, fbo_data, pa);
+	    draw_particle(fbo_pos, fbo_data, pa); 
 
 		requestAnimationFrame(update);
 
@@ -333,18 +352,35 @@ function init_buffers (prog) {
 
 }
 
-// send buffer data to gpu 
-function send_buffer_data (pa) {
+function send_texture_coordinates_to_gpu (pa) {
+    
+    // Note: Calculations involving tiny decimals require special care
+    //       because JavaScript's math is broken. In this case, operations
+    //       on a decimal representing the width of a single pixel intermittently
+    //       produce the wrong result due to floating point errors. To work
+    //       around the issue, this block uses the arbitrary-precision decimal
+    //       library decimal.js.
+    // Source: https://github.com/MikeMcl/decimal.js/
 
-	let coords = [];
+    // Declare Variables
+    let coords = [];
+    let pixel_size = (new Decimal(1.0)).dividedBy(new Decimal(config.TEXTURE_SIZE)); // 1 / TEXTURE_SIZE
+    let half_pixel_size = pixel_size.dividedBy(new Decimal(2)); // pixel_size / 2
 
-	for (let i = 0; i < pa.length; ++i) {	
-		let y = Math.floor(i / config.TEXTURE_SIZE);
-		let x = i - config.TEXTURE_SIZE * y;  
-		coords.push(x/config.TEXTURE_SIZE); // [0, 1]
-		coords.push(y/config.TEXTURE_SIZE); // [0, 1]
-	}
+    // Generate Texture Coordinates [0, 1] for Each Pixel
+    for (let x = 0; x < config.TEXTURE_SIZE; x++) {
+    	for (let y = 0; y < config.TEXTURE_SIZE; y++) {
+    		let coord_x = pixel_size.times(new Decimal(x).plus(half_pixel_size)).toPrecision(5);
+    		let coord_y = pixel_size.times(new Decimal(y).plus(half_pixel_size)).toPrecision(5);
+		    coords.push(coord_x);
+		    coords.push(coord_y);
 
+            // Texture Coordinate Logging
+		    //console.log(coord_x, coord_y)
+    	}
+    }
+
+    // Send Texture Coordinates to GPU
 	let texcoords = new Float32Array(coords); 
 	gl.bindBuffer(gl.ARRAY_BUFFER, g_texcoord_buffer);    
 	gl.bufferData(gl.ARRAY_BUFFER, texcoords, gl.STATIC_DRAW);
@@ -362,17 +398,19 @@ function Particle () {
 	this.seed = 0;
 }
 
-function init_particle (p) {
+function initialize_active_particle (p, slice) {
 
     // Generate Initial Position
-	p.position_initial[0] = Math.random() * 0.5 + 2.0;
-	p.position_initial[1] = Math.random() * 4.0 - 2.0;
-	p.position_initial[2] = Math.random() * 0.5;
+	p.position_initial[0] = 0.0; //Math.random() * 0.5 + 2.0;
+	p.position_initial[1] = 0.0; //Math.random() * 4.0 - 2.0;
+	p.position_initial[2] = 0.0; //Math.random() * 0.5;
 
 	// Generate Final Position
-	p.position_final[0] = Math.random() * 0.05 - 2.0;
-	p.position_final[1] = Math.random() * 0.05;
-	p.position_final[2] = Math.random() * 0.05;
+	let position_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS; // Math.random() * 0.05 - 2.0;
+	let position_z = Math.sin(2 * Math.PI * (slice / config.RING_SLICES)) * config.RING_RADIUS; //Math.random() * 0.05;
+	p.position_final[0] = position_x;
+	p.position_final[1] = 0.0;
+	p.position_final[2] = position_z;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -380,8 +418,30 @@ function init_particle (p) {
 	p.position[2] = p.position_initial[2];
 
     // Generate Default Data
-    p.wait = Math.random() * config.LOOP_TIME;
+    p.wait = 0.0;//(slice / config.RING_SLICES) * config.LOOP_TIME;
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+}
+
+function initialize_disabled_particle (p) {
+
+    // Generate Initial Position
+	p.position_initial[0] = 0.0;
+	p.position_initial[1] = 0.0;
+	p.position_initial[2] = 0.0;
+
+	// Generate Final Position
+	p.position_final[0] = 0.0;
+	p.position_final[1] = 0.0;
+	p.position_final[2] = 0.0;
+
+    // Generate Position
+	p.position[0] = 0.0;
+	p.position[1] = 0.0;
+	p.position[2] = 0.0;
+
+    // Generate Default Data
+    p.wait = 0.0;
+    p.seed = 0.0;
 }
 
 function create_fbos (pa) {
@@ -392,25 +452,30 @@ function create_fbos (pa) {
 	let data = [];
 
 	for (let i = 0; i < pa.length; ++i) {
-		position_initial.push(pa[i].position_initial[0]); // x
-		position_initial.push(pa[i].position_initial[1]); // y
-		position_initial.push(pa[i].position_initial[2]); // z
-		position_initial.push(1);                         // w
 
-		position_final.push(pa[i].position_final[0]); // x
-		position_final.push(pa[i].position_final[1]); // y
-		position_final.push(pa[i].position_final[2]); // z
-		position_final.push(1);                       // w
+		// Initial Position
+		position_initial.push(pa[i].position_initial[0]);
+		position_initial.push(pa[i].position_initial[1]);
+		position_initial.push(pa[i].position_initial[2]);
+		position_initial.push(1);
 
-		position.push(pa[i].position[0]); // x
-		position.push(pa[i].position[1]); // y
-		position.push(pa[i].position[2]); // z
-		position.push(1);                 // w
+        // Final Position
+		position_final.push(pa[i].position_final[0]);
+		position_final.push(pa[i].position_final[1]);
+		position_final.push(pa[i].position_final[2]);
+		position_final.push(1);
 
-		data.push(pa[i].alpha);     // x
-		data.push(pa[i].wait);      // y
-		data.push(pa[i].bightness); // z
-		data.push(pa[i].seed);      // w 
+        // Current Position
+		position.push(pa[i].position[0]);
+		position.push(pa[i].position[1]);
+		position.push(pa[i].position[2]);
+		position.push(1);
+
+        // Particle Data
+		data.push(pa[i].alpha);
+		data.push(pa[i].wait);
+		data.push(pa[i].bightness);
+		data.push(pa[i].seed);
 	}
     
     // add texture image to fbo
