@@ -20,8 +20,10 @@ let frag_position = `#version 300 es
 	uniform sampler2D texture_position;
 	uniform sampler2D texture_data;
 	uniform float time;
-	uniform float time_loop;
-	uniform float time_delay;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_ring_assembly;
+	uniform float length_slice_assembly;
 	in vec2 v_coord; // UV coordinate of current point.
 
     // Output Variables
@@ -63,7 +65,13 @@ let frag_position = `#version 300 es
 		vec4 final_position = texture(texture_final_position, v_coord);
 		float wait = texture(texture_data, v_coord).g;
 		float seed = texture(texture_data, v_coord).a;
-		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
+		float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
+		
+        // Calculate Animation Factor
+		float factor = 0.0;
+		if (delay_time > wait) {
+			factor = min((delay_time - wait) / length_slice_assembly, 1.0);
+		}
 
 		// Generate Detour Position (For gently curved particle trajectory)
 		vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
@@ -80,8 +88,8 @@ let frag_data = `#version 300 es
 
 	uniform sampler2D texture_data;
 	uniform float time;
-	uniform float time_loop;
-	uniform float time_delay;
+	uniform float length_loop;
+	uniform float length_start_delay;
 	in vec2 v_coord;
 
 	out vec4 cg_FragColor; 
@@ -94,7 +102,8 @@ let frag_data = `#version 300 es
 		float alpha = texture(texture_data, v_coord).r;
         float wait = texture(texture_data, v_coord).g;
         float seed = texture(texture_data, v_coord).a;
-		float factor = mod(max(time - wait, 0.0), time_loop) / time_loop;
+        float delay_time = max(time - length_start_delay, 0.0);
+		float factor = mod(max(delay_time - wait, 0.0), length_loop) / length_loop;
 
 		alpha = 1.0;//factor;
 		    
@@ -115,7 +124,7 @@ let vertex_particle = `#version 300 es
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = 10.0;
+		gl_PointSize = 5.0;
 		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
@@ -162,7 +171,7 @@ const frag_display = `#version 300 es
 	out vec4 cg_FragColor; 
 
 	void main() {
-	   cg_FragColor = texture(u_image, v_coord);
+	    cg_FragColor = texture(u_image, v_coord);
 	}
 `;
 
@@ -170,13 +179,15 @@ const frag_display = `#version 300 es
 /*--- Program Configuration ---*/
 
 let config = {
-	GLOBAL_DELAY: 1000,
-	LOOP_TIME:8000,
+    LENGTH_LOOP:8000,                         // Length of full animation
+	LENGTH_START_DELAY: 1000,                 // Length of start delay
+	LENGTH_RING_ASSEMBLY: 7000,               // Length of ring assembly
+	LENGTH_SLICE_ASSEMBLY: 2000,              // Length of slice assembly 
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 100,                         // Final = 2096
+    RING_SLICES: 30,                         // Final = 2096
     RING_RADIUS: 3,
-    TEXTURE_SIZE: 12                          // Value squared is max particle count.
+    TEXTURE_SIZE: 10                          // Value squared is max particle count.
 }
 
 
@@ -418,7 +429,8 @@ function initialize_active_particle (p, slice) {
 	p.position[2] = p.position_initial[2];
 
     // Generate Default Data
-    p.wait = 0.0;//(slice / config.RING_SLICES) * config.LOOP_TIME;
+    let base_wait = slice * ((config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY) / config.RING_SLICES);
+    p.wait = base_wait;
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 }
 
@@ -605,9 +617,10 @@ function update_position (position_initial, position_final, position, data) {
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(4));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(4));
 
-    gl.uniform1f(program.uniforms.time_loop, config.LOOP_TIME);
-    
-    gl.uniform1f(program.uniforms.time_delay, config.GLOBAL_DELAY);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
 
     gl.viewport(0, 0, position.width, position.height);
  
@@ -625,9 +638,8 @@ function update_data (data) {
     if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
     else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
 
-    gl.uniform1f(program.uniforms.time_loop, config.LOOP_TIME);
-    
-    gl.uniform1f(program.uniforms.time_delay, config.GLOBAL_DELAY);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
 
     gl.viewport(0, 0, data.width, data.height);
  
