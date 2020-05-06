@@ -44,11 +44,17 @@ Position
   B: z pos
   A: ---
 
-Data
+Data Dynamic
   R: Alpha
-  G: Wait
-  B: Brightness
-  A: Seed
+  G: Brightness
+  B: ---
+  A: ---
+
+Data Static
+  R: Wait
+  G: Seed
+  B: ---
+  A: ---
 
 
 /*--- Pseudocode ---*/

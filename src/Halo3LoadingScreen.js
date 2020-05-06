@@ -18,7 +18,7 @@ let frag_position = `#version 300 es
     uniform sampler2D texture_initial_position;
 	uniform sampler2D texture_final_position;
 	uniform sampler2D texture_position;
-	uniform sampler2D texture_data;
+	uniform sampler2D texture_data_static;
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -63,8 +63,8 @@ let frag_position = `#version 300 es
 	void main() {
 		vec4 initial_position = texture(texture_initial_position, v_coord);
 		vec4 final_position = texture(texture_final_position, v_coord);
-		float wait = texture(texture_data, v_coord).g;
-		float seed = texture(texture_data, v_coord).a;
+		float wait = texture(texture_data_static, v_coord).r;
+		float seed = texture(texture_data_static, v_coord).g;
 		float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
 		
         // Calculate Animation Factor
@@ -86,7 +86,8 @@ let frag_position = `#version 300 es
 let frag_data = `#version 300 es
 	precision mediump float;
 
-	uniform sampler2D texture_data;
+	uniform sampler2D texture_data_dynamic;
+	uniform sampler2D texture_data_static;
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -99,13 +100,14 @@ let frag_data = `#version 300 es
 	}
 
 	void main() {
-		float alpha = texture(texture_data, v_coord).r;
-        float wait = texture(texture_data, v_coord).g;
-        float seed = texture(texture_data, v_coord).a;
+		float alpha = texture(texture_data_dynamic, v_coord).r;
+		float brightness = texture(texture_data_dynamic, v_coord).g;
+        float wait = texture(texture_data_static, v_coord).r;
+        float seed = texture(texture_data_static, v_coord).g;
 
 		alpha = 1.0;
 		    
-        cg_FragColor = vec4(alpha, wait, 0.0, seed);
+        cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
 	}	
 `;
 
@@ -135,13 +137,12 @@ let frag_particle = `#version 300 es
 	precision mediump float;
 
     in vec2 v_texcoord; // texcoord associated with this particle
-    
-    uniform sampler2D u_data; // contains particle info
+    uniform sampler2D texture_data_dynamic;
 
 	out vec4 cg_FragColor; 
 
 	void main() {
-		float alpha = texture(u_data, v_texcoord).r;
+		float alpha = texture(texture_data_dynamic, v_texcoord).r;
 		cg_FragColor = vec4(0.9, 0.9, 1.0, alpha);  
 	}
 `;
@@ -212,7 +213,8 @@ let prog_data;             // Particle Data Updater
 let fbo_pos_initial;       // Particle Initial Position
 let fbo_pos_final;         // Particle Final Position
 let fbo_pos;               // Particle Position
-let fbo_data;              // Particle Metadata
+let fbo_data_dynamic;      // Changing Particle Metadata
+let fbo_data_static;       // Unchanging Particle Metadata
 
 
 /*--- Shader Execution Functions ---*/
@@ -331,10 +333,9 @@ function main () {
 
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data);
-		update_data(fbo_data);
-        
-	    draw_particle(fbo_pos, fbo_data, pa); 
+		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
+		update_data(fbo_data_dynamic, fbo_data_static);
+	    draw_particle(fbo_pos, fbo_data_dynamic, pa); 
 
 		requestAnimationFrame(update);
 
@@ -461,7 +462,8 @@ function create_fbos (pa) {
 	let position_initial = [];
 	let position_final = [];
 	let position = [];
-	let data = [];
+	let data_dynamic = [];
+	let data_static = [];
 
 	for (let i = 0; i < pa.length; i++) {
 
@@ -483,11 +485,17 @@ function create_fbos (pa) {
 		position.push(pa[i].position[2]);
 		position.push(1);
 
-        // Particle Data
-		data.push(pa[i].alpha);
-		data.push(pa[i].wait);
-		data.push(pa[i].bightness);
-		data.push(pa[i].seed);
+        // Changing Particle Data
+		data_dynamic.push(pa[i].alpha);
+		data_dynamic.push(pa[i].wait);
+		data_dynamic.push(pa[i].bightness);
+		data_dynamic.push(pa[i].seed);
+
+		// Unchanging Particle Data
+		data_static.push(pa[i].wait);
+		data_static.push(pa[i].seed);
+		data_static.push(1);
+		data_static.push(1);
 
 		// Conditionally Log Wait
 // 		if (pa[i].wait != 0) {
@@ -499,7 +507,8 @@ function create_fbos (pa) {
 	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
 	fbo_pos_final.read.addTexture(new Float32Array(position_final));
 	fbo_pos.read.addTexture(new Float32Array(position));
-	fbo_data.read.addTexture(new Float32Array(data));
+	fbo_data_dynamic.read.addTexture(new Float32Array(data_dynamic));
+	fbo_data_static.read.addTexture(new Float32Array(data_static));
 }
 
 // When attaching a texture to a framebuffer, all rendering commands will 
@@ -602,11 +611,12 @@ function cg_init_framebuffers() {
     fbo_pos_initial = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_pos_final = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
     fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_data = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_data_dynamic = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_data_static = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
 
 }
 
-function update_position (position_initial, position_final, position, data) {
+function update_position (position_initial, position_final, position, data_static) {
     let program = prog_position;
     program.bind_time();
 
@@ -619,8 +629,8 @@ function update_position (position_initial, position_final, position, data) {
     if (position.single) gl.uniform1i(program.uniforms.texture_position, position.attach(3));
     else gl.uniform1i(program.uniforms.texture_position, position.read.attach(3));
 
-    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(4));
-    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(4));
+    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(4));
+    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(4));
 
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
@@ -636,34 +646,37 @@ function update_position (position_initial, position_final, position, data) {
     }  
 }
 
-function update_data (data) {
+function update_data (data_dynamic, data_static) {
     let program = prog_data;
     program.bind_time();
 
-    if (data.single) gl.uniform1i(program.uniforms.texture_data, data.attach(1));
-    else gl.uniform1i(program.uniforms.texture_data, data.read.attach(1));
+    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(1));
+    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(1));
+
+    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(2));
+    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(2));
 
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
 
-    gl.viewport(0, 0, data.width, data.height);
+    gl.viewport(0, 0, data_dynamic.width, data_dynamic.height);
  
-    if (data.single) draw_vao_image(data.fbo);
+    if (data_dynamic.single) draw_vao_image(data_dynamic.fbo);
     else {
-        draw_vao_image(data.write.fbo);
-        data.swap();
+        draw_vao_image(data_dynamic.write.fbo);
+        data_dynamic.swap();
     }  
 }
 
-function draw_particle (position, data, pa) {
+function draw_particle (position, data_dynamic, pa) {
     let program = prog_particle;
     program.bind();
 
     if (position.single) gl.uniform1i(program.uniforms.u_pos, position.attach(1));
     else gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     
-    if (data.single) gl.uniform1i(program.uniforms.u_data, data.attach(2));
-    else gl.uniform1i(program.uniforms.u_data, data.read.attach(2));
+    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(2));
+    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
