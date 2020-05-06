@@ -193,9 +193,6 @@ let config = {
 
 /*--- Variable Declarations ---*/
 
-let start = new Date();
-let time = 0.0;
-
 let gl, canvas;
 let g_proj_mat = new Matrix4();
 let g_light_dir = new Vector3([0, 0.4, 0.6]);
@@ -257,7 +254,7 @@ class GLProgram {
 
     bind_time() {
     	gl.useProgram(this.program);
-        gl.uniform1f(this.uniforms.time, time);
+        gl.uniform1f(this.uniforms.time, performance.now());
     }
 }
 
@@ -266,11 +263,19 @@ function $(id) {
 }
 
 function main () {
-	// Retrieve <canvas> element
+
+	// Retrieve Canvas
 	canvas = document.getElementById('canvas');
 
-	// Get the rendering context for WebGL
+	// Get & Configure Rendering Context
 	gl = canvas.getContext('webgl2');
+    gl.clearColor(
+        config.BACKGROUND_COLOR[0],
+        config.BACKGROUND_COLOR[1],
+        config.BACKGROUND_COLOR[2],
+        config.BACKGROUND_COLOR[3]);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -307,43 +312,27 @@ function main () {
 		initialize_disabled_particle(pa[x]);
 	}
 
-    // Log Particle Initialization
-// 	for (let x = 0; x < pa.length; x++) {
-// 		if (!(pa[x].position_final[0] == 0.0 && pa[x].position_final[1] == 0.0 && pa[x].position_final[2] == 0.0)) {
-// 			console.log("Enabled particle");
-// 		} else {
-// 			console.log("Disabled particle");
-// 		}
-// 	}
-
+    // Create VAO Image
    	vao_image_create();
 
+    // Setup Frame Buffer Objects
 	cg_init_framebuffers(); // create fbos 
 	create_fbos(pa);        // initialize fbo data
-
 	init_buffers(prog_particle); 
 	send_texture_coordinates_to_gpu(pa);
 
-    gl.clearColor(
-        config.BACKGROUND_COLOR[0],
-        config.BACKGROUND_COLOR[1],
-        config.BACKGROUND_COLOR[2],
-        config.BACKGROUND_COLOR[3]);
-
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
+    // Define Update Function
 	let update = function() {    
 
+        // Clear Canvas
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
+        // Render Scene
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_data(fbo_data_dynamic, fbo_data_static);
 	    draw_particle(fbo_pos, fbo_data_dynamic, pa); 
 
 		requestAnimationFrame(update);
-
-		time = new Date() - start;
 	};
 	update(); 
 }
@@ -383,9 +372,6 @@ function send_texture_coordinates_to_gpu (pa) {
     		let coord_y = pixel_size.times(new Decimal(y).plus(half_pixel_size)).toPrecision(5);
 		    coords.push(coord_x);
 		    coords.push(coord_y);
-
-            // Texture Coordinate Logging
-		    //console.log(coord_x, coord_y)
     	}
     }
 
@@ -431,9 +417,6 @@ function initialize_active_particle (p, slice) {
     let slice_wait = new Decimal(wait_window).dividedBy(new Decimal(config.RING_SLICES - 1));
     let base_wait = slice_wait.times(new Decimal(slice));
     p.wait = base_wait.toPrecision(5);
-
-    // Log Wait Time
-    //console.log(base_wait.toPrecision(5));
 
     // Generate Seed
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
@@ -501,10 +484,6 @@ function create_fbos (pa) {
 		data_static.push(1);
 		data_static.push(1);
 
-		// Conditionally Log Wait
-// 		if (pa[i].wait != 0) {
-// 			console.log(pa[i].wait);
-// 		}
 	}
     
     // add texture image to fbo
