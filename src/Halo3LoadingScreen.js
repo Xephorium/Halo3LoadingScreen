@@ -21,7 +21,7 @@ let config = {
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 1200,                        // Final = 2096
-    RING_RADIUS: 3,
+    RING_RADIUS: 3.5,
     TEXTURE_SIZE: 50,                         // Value squared is max particle count
     PARTICLE_SIZE: 2,
     PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
@@ -303,7 +303,7 @@ function main () {
 
     // Define View Matrix
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
-	g_view_mat.setLookAt(0, 5, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+	g_view_mat.setLookAt(0, 5, 10, 0, -0.5, 0, 0, 1, 0); // eyePos - focusPos - upVector  
 
     // Send Variables to Particle Program
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
