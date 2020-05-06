@@ -400,8 +400,9 @@ function send_texture_coordinates_to_gpu (pa) {
 	gl.bufferData(gl.ARRAY_BUFFER, texcoords, gl.STATIC_DRAW);
 }
 
-//////////////////////////////////////////////////////////////////////
-// Particle constructor
+
+/*--- Particle Class & Generation ---*/
+
 function Particle () {
 	this.position_initial = new Array(3);
 	this.position_final = new Array(3);
@@ -413,14 +414,14 @@ function Particle () {
 	this.disabled = 0;
 }
 
-function initialize_active_particle (p, slice, partcle) {
+function initialize_active_particle (p, slice, particle) {
 
     // Generate Final Position
-	let position_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS; // Math.random() * 0.05 - 2.0;
-	let position_z = Math.sin(2 * Math.PI * (slice / config.RING_SLICES)) * config.RING_RADIUS; //Math.random() * 0.05;
-	p.position_final[0] = position_x;
-	p.position_final[1] = 0.0;
-	p.position_final[2] = position_z;
+	let slice_position_final = generate_slice_position_final(slice);
+	let particle_position_final = generate_particle_position_final(slice_position_final, particle);
+	p.position_final[0] = particle_position_final[0];
+	p.position_final[1] = particle_position_final[1];
+	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
 	p.position_initial[0] = p.position_final[0] + ((Math.random() - 0.5) * 0.1);
@@ -441,6 +442,22 @@ function initialize_active_particle (p, slice, partcle) {
 
     // Generate Seed
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+}
+
+function generate_slice_position_final(slice) {
+	let slice_position_final = [];
+	slice_position_final[0] = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS;
+	slice_position_final[1] = 0.0;
+	slice_position_final[2] = Math.sin(2 * Math.PI * (slice / config.RING_SLICES)) * config.RING_RADIUS;
+	return slice_position_final;
+}
+
+function generate_particle_position_final(base, particle) {
+	let particle_position_final = [];
+	particle_position_final[0] = base[0];
+	particle_position_final[1] = base[1];
+	particle_position_final[2] = base[2];
+	return particle_position_final;
 }
 
 function initialize_disabled_particle (p) {
@@ -465,6 +482,9 @@ function initialize_disabled_particle (p) {
     p.seed = 0.0;
     p.disabled = 1;
 }
+
+
+/*--- Frame Buffer Object Generation ---*/
 
 function create_fbos (pa) {
 
