@@ -102,10 +102,8 @@ let frag_data = `#version 300 es
 		float alpha = texture(texture_data, v_coord).r;
         float wait = texture(texture_data, v_coord).g;
         float seed = texture(texture_data, v_coord).a;
-        float delay_time = max(time - length_start_delay, 0.0);
-		float factor = mod(max(delay_time - wait, 0.0), length_loop) / length_loop;
 
-		alpha = 1.0;//factor;
+		alpha = 1.0;
 		    
         cg_FragColor = vec4(alpha, wait, 0.0, seed);
 	}	
@@ -185,9 +183,9 @@ let config = {
 	LENGTH_SLICE_ASSEMBLY: 2000,              // Length of slice assembly 
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 30,                         // Final = 2096
+    RING_SLICES: 50,                         // Final = 2096
     RING_RADIUS: 3,
-    TEXTURE_SIZE: 10                          // Value squared is max particle count.
+    TEXTURE_SIZE: 8                          // Value squared is max particle count.
 }
 
 
@@ -205,8 +203,6 @@ let g_view_mat = new Matrix4();
 let vao_image; // vao for drawing image (using 2 triangles)
 
 let g_texcoord_buffer; // texcoord associated with each particle
-let g_normal_buffer;
-let g_index_buffer;
 
 let prog_particle;         // Particle Renderer
 let prog_display;          // FBO Renderer
@@ -297,7 +293,7 @@ function main () {
 	for (let x = 0; x < config.RING_SLICES; x++) {
 		pa[x] = new Particle();
 		initialize_active_particle(pa[x], x);
-		particle_index = particle_index + 1;
+		particle_index++;
 	}
 
 	// Create Disabled Particles
@@ -331,8 +327,6 @@ function main () {
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-	gl.clear(gl.COLOR_BUFFER_BIT);
 
 	let update = function() {    
 
@@ -428,9 +422,16 @@ function initialize_active_particle (p, slice) {
 	p.position[1] = p.position_initial[1];
 	p.position[2] = p.position_initial[2];
 
-    // Generate Default Data
-    let base_wait = slice * ((config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY) / config.RING_SLICES);
-    p.wait = base_wait;
+    // Generate Wait Time
+    let wait_window = config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY;
+    let slice_wait = new Decimal(wait_window).dividedBy(new Decimal(config.RING_SLICES - 1));
+    let base_wait = slice_wait.times(new Decimal(slice));
+    p.wait = base_wait.toPrecision(5);
+
+    // Log Wait Time
+    //console.log(base_wait.toPrecision(5));
+
+    // Generate Seed
     p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 }
 
@@ -463,7 +464,7 @@ function create_fbos (pa) {
 	let position = [];
 	let data = [];
 
-	for (let i = 0; i < pa.length; ++i) {
+	for (let i = 0; i < pa.length; i++) {
 
 		// Initial Position
 		position_initial.push(pa[i].position_initial[0]);
@@ -488,6 +489,11 @@ function create_fbos (pa) {
 		data.push(pa[i].wait);
 		data.push(pa[i].bightness);
 		data.push(pa[i].seed);
+
+		// Conditionally Log Wait
+// 		if (pa[i].wait != 0) {
+// 			console.log(pa[i].wait);
+// 		}
 	}
     
     // add texture image to fbo
