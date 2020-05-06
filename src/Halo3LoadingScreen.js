@@ -91,6 +91,7 @@ let frag_data = `#version 300 es
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
+	uniform float length_particle_fade;
 	in vec2 v_coord;
 
 	out vec4 cg_FragColor; 
@@ -104,8 +105,13 @@ let frag_data = `#version 300 es
 		float brightness = texture(texture_data_dynamic, v_coord).g;
         float wait = texture(texture_data_static, v_coord).r;
         float seed = texture(texture_data_static, v_coord).g;
+        float disabled = texture(texture_data_static, v_coord).b;
+        float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
 
-		alpha = 1.0;
+		alpha = 0.0;
+		if (disabled == 0.0 && delay_time > wait) {
+			alpha = min((delay_time - wait) / length_particle_fade, 1.0);
+		}
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
 	}	
@@ -179,9 +185,10 @@ const frag_display = `#version 300 es
 
 let config = {
     LENGTH_LOOP:8000,                         // Length of full animation
-	LENGTH_START_DELAY: 1000,                 // Length of start delay
-	LENGTH_RING_ASSEMBLY: 7000,               // Length of ring assembly
-	LENGTH_SLICE_ASSEMBLY: 2000,              // Length of slice assembly 
+	LENGTH_START_DELAY: 1000,
+	LENGTH_RING_ASSEMBLY: 7000,
+	LENGTH_SLICE_ASSEMBLY: 2000,
+	LENGTH_PARTICLE_FADE: 2000,               // Length of each particle's fade-in
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 100,                         // Final = 2096
@@ -391,6 +398,7 @@ function Particle () {
 	this.wait = 0.0;
 	this.brightness = 1;
 	this.seed = 0;
+	this.disabled = 0;
 }
 
 function initialize_active_particle (p, slice) {
@@ -439,9 +447,10 @@ function initialize_disabled_particle (p) {
 	p.position[1] = 0.0;
 	p.position[2] = 0.0;
 
-    // Generate Default Data
+    // Generate Disabled Data
     p.wait = 0.0;
     p.seed = 0.0;
+    p.disabled = 1;
 }
 
 function create_fbos (pa) {
@@ -481,7 +490,7 @@ function create_fbos (pa) {
 		// Unchanging Particle Data
 		data_static.push(pa[i].wait);
 		data_static.push(pa[i].seed);
-		data_static.push(1);
+		data_static.push(pa[i].disabled);
 		data_static.push(1);
 
 	}
@@ -641,6 +650,7 @@ function update_data (data_dynamic, data_static) {
 
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
 
     gl.viewport(0, 0, data_dynamic.width, data_dynamic.height);
  

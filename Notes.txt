@@ -53,7 +53,7 @@ Data Dynamic
 Data Static
   R: Wait
   G: Seed
-  B: ---
+  B: Active
   A: ---
 
 
