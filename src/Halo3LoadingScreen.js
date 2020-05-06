@@ -20,9 +20,12 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 1200,                        // Final = 2096
+    RING_SLICES: 100,                        // Final = 2096
     RING_RADIUS: 3.5,
-    TEXTURE_SIZE: 50,                         // Value squared is max particle count
+    SLICE_PARTICLES: 1,                       // Must be even
+    SLICE_SIZE: 0.05,                         // Distance between slice particles
+    SLICE_THICKNESS: 2,                       // this - 1 = Number of particles separating inner and outer walls
+    TEXTURE_SIZE: 10,                         // Value squared is max particle count
     PARTICLE_SIZE: 2,
     PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
 }
@@ -311,16 +314,18 @@ function main () {
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
     gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);  
 
-	// Create Ring Particles
+	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
 	let particle_index = 0; 
-	for (let x = 0; x < config.RING_SLICES; x++) {
-		pa[x] = new Particle();
-		initialize_active_particle(pa[x], x);
-		particle_index++;
+	for (let slice = 0; slice < config.RING_SLICES; slice++) {
+		for (let particle = 0; particle < config.SLICE_PARTICLES; particle++) {
+			pa[particle_index] = new Particle();
+		    initialize_active_particle(pa[particle_index], slice, particle);
+		    particle_index++;	
+		}
 	}
 
-	// Create Disabled Particles
+	// Generate Disabled Particles
 	for (let x = particle_index; x < pa.length; x++) {
 		pa[x] = new Particle();
 		initialize_disabled_particle(pa[x]);
@@ -408,7 +413,7 @@ function Particle () {
 	this.disabled = 0;
 }
 
-function initialize_active_particle (p, slice) {
+function initialize_active_particle (p, slice, partcle) {
 
     // Generate Final Position
 	let position_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS; // Math.random() * 0.05 - 2.0;
