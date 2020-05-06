@@ -9,6 +9,23 @@
  */ 
 
 
+/*--- Global Configuration ---*/
+
+let config = {
+    LENGTH_LOOP:8000,                         // Length of full animation
+	LENGTH_START_DELAY: 1000,
+	LENGTH_RING_ASSEMBLY: 7000,
+	LENGTH_SLICE_ASSEMBLY: 2000,
+	LENGTH_PARTICLE_FADE: 2000,               // Length of each particle's fade-in
+	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
+	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
+    RING_SLICES: 100,                         // Final = 2096
+    RING_RADIUS: 3,
+    TEXTURE_SIZE: 10,                         // Value squared is max particle count.
+    PARTICLE_SIZE: 2
+}
+
+
 /*--- Shader Declarations ---*/
 
 let frag_position = `#version 300 es
@@ -179,23 +196,6 @@ const frag_display = `#version 300 es
 	    cg_FragColor = texture(u_image, v_coord);
 	}
 `;
-
-
-/*--- Program Configuration ---*/
-
-let config = {
-    LENGTH_LOOP:8000,                         // Length of full animation
-	LENGTH_START_DELAY: 1000,
-	LENGTH_RING_ASSEMBLY: 7000,
-	LENGTH_SLICE_ASSEMBLY: 2000,
-	LENGTH_PARTICLE_FADE: 2000,               // Length of each particle's fade-in
-	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
-	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 100,                         // Final = 2096
-    RING_RADIUS: 3,
-    TEXTURE_SIZE: 10,                         // Value squared is max particle count.
-    PARTICLE_SIZE: 2
-}
 
 
 /*--- Variable Declarations ---*/
