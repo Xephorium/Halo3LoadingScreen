@@ -118,13 +118,13 @@ let vertex_particle = `#version 300 es
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
-
 	uniform sampler2D u_pos; // obtain particle position from texture
+	uniform float particle_size;
 
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = 5.0;
+		gl_PointSize = particle_size;
 		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
@@ -184,9 +184,10 @@ let config = {
 	LENGTH_SLICE_ASSEMBLY: 2000,              // Length of slice assembly 
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 50,                         // Final = 2096
+    RING_SLICES: 100,                         // Final = 2096
     RING_RADIUS: 3,
-    TEXTURE_SIZE: 8                          // Value squared is max particle count.
+    TEXTURE_SIZE: 10,                         // Value squared is max particle count.
+    PARTICLE_SIZE: 2
 }
 
 
@@ -275,18 +276,21 @@ function main () {
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
     canvas.height = 1080 * config.RESOLUTION_SCALE;
 
+    // Create Rendering Programs
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
-
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
+    // Define View Matrix
 	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
-	g_view_mat.setLookAt(0, 5, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector    
+	g_view_mat.setLookAt(0, 5, 10, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
 
+    // Send Variables to Particle Program
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
+    gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);  
 
 	// Create Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
