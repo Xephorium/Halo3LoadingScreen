@@ -13,18 +13,18 @@
 
 let config = {
     LENGTH_LOOP:21000,                         // Length of full animation
-	LENGTH_START_DELAY: 1000,
+	LENGTH_START_DELAY: 800,
 	LENGTH_RING_ASSEMBLY: 19000,
 	LENGTH_SLICE_ASSEMBLY: 2000,
 	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 2000,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 1200,                         // Final = 2096
+    RING_SLICES: 1200,                        // Final = 2096
     RING_RADIUS: 3,
     TEXTURE_SIZE: 50,                         // Value squared is max particle count
     PARTICLE_SIZE: 2,
-    PARTICLE_WAIT_VARIATION: 100               // Amount of random flux in particle wait
+    PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
 }
 
 
@@ -84,7 +84,8 @@ let frag_position = `#version 300 es
 		vec4 final_position = texture(texture_final_position, v_coord);
 		float wait = texture(texture_data_static, v_coord).r;
 		float seed = texture(texture_data_static, v_coord).g;
-		float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
 		
         // Calculate Animation Factor
 		float factor = 0.0;
@@ -126,7 +127,8 @@ let frag_data = `#version 300 es
         float wait = texture(texture_data_static, v_coord).r;
         float seed = texture(texture_data_static, v_coord).g;
         float disabled = texture(texture_data_static, v_coord).b;
-        float delay_time = mod(max(time - length_start_delay, 0.0), length_loop);
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
 
 		alpha = 0.0;
 		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
