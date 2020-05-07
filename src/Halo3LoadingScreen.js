@@ -12,27 +12,28 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:20500,                         // Length of full animation
+    LENGTH_LOOP:70000,                         // Length of full animation
 	LENGTH_START_DELAY: 800,
-	LENGTH_RING_ASSEMBLY: 19000,
-	LENGTH_SLICE_ASSEMBLY: 2000,
+	LENGTH_RING_ASSEMBLY: 68000,
+	LENGTH_SLICE_ASSEMBLY: 1100,
 	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 100,                         // Final = 2096
+    RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
-    SLICE_PARTICLES: 8,                       // Must be even
-    SLICE_SIZE: 0.05,                         // Distance between slice particles
-    SLICE_WIDTH: 3,                           // Number of particles on top and bottom edges of ring
+    SLICE_PARTICLES: 50,                       // Must be even
+    SLICE_SIZE: 0.01,                         // Distance between slice particles
+    SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 2,
-    PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
+    PARTICLE_SIZE: 1.5,
+    PARTICLE_WAIT_VARIATION: 500              // Amount of random flux in particle wait
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
-config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) + 1;
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
+else if (config.SLICE_WIDTH == config.SLICE_PARTICLES / 2) config.SLICE_HEIGHT = 2;
+else config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) + 2;
 
 
 /*--- Shader Declarations ---*/
@@ -68,9 +69,9 @@ let frag_position = `#version 300 es
 	vec4 generate_detour_position(vec4 p1, vec4 p2, float seed) {
 		vec4 detour = mix(p1, p2, 0.5);
 		return vec4(
-            detour[0],
-            detour[1] + generate_float(3.0, seed) * 0.1,
-            detour[2],
+            detour[0] + generate_float(4.0, seed) * 0.2,
+            detour[1] + generate_float(3.0, seed) * 0.05,
+            detour[2] + generate_float(5.0, seed) * 0.2,
             detour[3]
 		);
 	}
@@ -139,9 +140,9 @@ let frag_data = `#version 300 es
 
 		alpha = 0.0;
 		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
-			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0);
+			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * .5;
 		} else if (disabled == 0.0 && delay_time > wait) {
-			alpha = min((delay_time - wait) / length_particle_fade, 1.0);
+			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * .5;
 		}
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
@@ -309,7 +310,7 @@ function main () {
 	prog_particle.bind();
 
     // Define View Matrix
-	g_proj_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
+	g_proj_mat.setPerspective(100, canvas.width/canvas.height, .02, 10000);
 	g_view_mat.setLookAt(0, 5, 10, 0, -0.5, 0, 0, 1, 0); // eyePos - focusPos - upVector  
 
     // Send Variables to Particle Program
@@ -349,6 +350,16 @@ function main () {
 
         // Clear Canvas
 		gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Update Camera Coordinates
+        let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
+        let camera_pos_x = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
+        let camera_pos_y = -0.15 * (Math.sin(2 * Math.PI * progress + 1) + 1);
+	    let camera_pos_z = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+
+		// Update View Matrix
+		g_view_mat.setLookAt(camera_pos_x, camera_pos_y, camera_pos_z, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+		gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 
         // Render Scene
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
@@ -422,15 +433,15 @@ function initialize_active_particle (p, slice, particle) {
 
     // Generate Final Position
 	let slice_position_final = generate_slice_position_final(slice);
-	let particle_position_final = generate_particle_position_final(slice_position_final, particle);
+	let particle_position_final = generate_particle_position_final(slice_position_final, particle, slice);
 	p.position_final[0] = particle_position_final[0];
 	p.position_final[1] = particle_position_final[1];
 	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + ((Math.random() - 0.5) * 0.1);
-	p.position_initial[1] = p.position_final[1] + ((Math.random() - 0.5) * 0.1);
-	p.position_initial[2] = p.position_final[2] + ((Math.random() - 0.5) * 0.1);
+	p.position_initial[0] = p.position_final[0] + ((Math.random() - 0.5) * 1.5);
+	p.position_initial[1] = p.position_final[1] + ((Math.random() - 0.5) * .2);
+	p.position_initial[2] = p.position_final[2] + ((Math.random() - 0.5) * 1.5);
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -449,22 +460,81 @@ function initialize_active_particle (p, slice, particle) {
 }
 
 function generate_slice_position_final(slice) {
+	let angular_factor_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2);
+	let angular_factor_y = Math.sin(2 * Math.PI * (slice / config.RING_SLICES));
+
 	let slice_position_final = [];
-	slice_position_final[0] = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2) * config.RING_RADIUS;
+	slice_position_final[0] = angular_factor_x * config.RING_RADIUS;
 	slice_position_final[1] = 0.0;
-	slice_position_final[2] = Math.sin(2 * Math.PI * (slice / config.RING_SLICES)) * config.RING_RADIUS;
+	slice_position_final[2] = angular_factor_y * config.RING_RADIUS;
 	return slice_position_final;
 }
 
-function generate_particle_position_final(base, particle) {
+function generate_particle_position_final(base, particle, slice) {
+    let angular_factor_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2);
+	let angular_factor_y = Math.sin(2 * Math.PI * (slice / config.RING_SLICES));
+
 	let particle_position_final = [];
-	particle_position_final[0] = base[0];
-	particle_position_final[1] = generate_particle_position_final_y(base[1], particle);
-	particle_position_final[2] = base[2];
+	particle_position_final[0] = generate_particle_position_final_horizontal(base[0], particle, angular_factor_x);
+	particle_position_final[1] = generate_particle_position_final_vertical(base[1], particle);
+	particle_position_final[2] = generate_particle_position_final_horizontal(base[2], particle, angular_factor_y);
 	return particle_position_final;
 }
 
-function generate_particle_position_final_y (base, particle) {
+function generate_particle_position_final_horizontal (base, particle, angle_factor) {
+    if (config.SLICE_WIDTH == 1) {
+
+		// Return Single Column Width
+		return base;
+
+	} else if (config.SLICE_WIDTH == 2) {
+
+		// Calculate Double Column Width
+		let width = 0.5;
+		if (particle >= config.SLICE_PARTICLES / 2) {
+			width *= -1;
+		}
+
+		// Return Double Column Width
+		return base + width * config.SLICE_SIZE * angle_factor;
+
+	} else {
+
+		// Calculate Width
+		let mirrored_particle = particle % (config.SLICE_PARTICLES / 2);
+		let width = 0;
+		if (config.SLICE_WIDTH % 2 == 0) {
+
+			// Calculate Even Width
+			let quarter = config.SLICE_PARTICLES / 4;
+			if (config.SLICE_PARTICLES % 4 == 0) quarter -= .5; 
+			let distance = Math.abs(mirrored_particle - quarter);
+			let clamp = Math.abs((config.SLICE_HEIGHT / 2 - 1) - quarter);
+			width = Math.min(distance, clamp);
+
+		} else {
+
+			// Calculate Odd Width
+			let quarter = config.SLICE_PARTICLES / 4;
+			if (config.SLICE_PARTICLES % 4 != 0) quarter -= .5; 
+			let distance = Math.abs(mirrored_particle - quarter);
+			let clamp = Math.abs(((config.SLICE_HEIGHT - 1) / 2) - quarter);
+			width = Math.min(distance, clamp);
+		}
+
+		// Account for Sign
+		if (particle < (config.SLICE_PARTICLES / 4) || particle >= (config.SLICE_PARTICLES / 4) * 3)  {
+			width = Math.abs(width) * -1;
+		} else {
+			width = Math.abs(width);
+		}
+
+		// Return Width
+		return base + width * config.SLICE_SIZE * angle_factor;
+	}
+}
+
+function generate_particle_position_final_vertical (base, particle) {
     if (config.SLICE_HEIGHT == 1) {
 
 		// Return Single Row Height
@@ -484,7 +554,7 @@ function generate_particle_position_final_y (base, particle) {
 	} else {
 
 		// Calculate Height
-		let mirrored_particle = x % (config.SLICE_PARTICLES / 2);
+		let mirrored_particle = particle % (config.SLICE_PARTICLES / 2);
 		let height = 0;
 		if (config.SLICE_HEIGHT % 2 == 0) {
 
@@ -506,7 +576,7 @@ function generate_particle_position_final_y (base, particle) {
 		}
 
 		// Account for Sign
-		if (x >= config.SLICE_PARTICLES / 2) {
+		if (particle >= config.SLICE_PARTICLES / 2) {
 			height *= -1;
 		}
 
