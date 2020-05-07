@@ -20,16 +20,19 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 100,                        // Final = 2096
+    RING_SLICES: 100,                         // Final = 2096
     RING_RADIUS: 3.5,
     SLICE_PARTICLES: 8,                       // Must be even
     SLICE_SIZE: 0.05,                         // Distance between slice particles
-    SLICE_THICKNESS: 2,                       // this - 1 = Number of particles separating inner and outer walls
-    TEXTURE_SIZE: 0,                          // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
+    SLICE_WIDTH: 3,                           // Number of particles on top and bottom edges of ring
+    SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
+    TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2,
     PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
+config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) + 1;
+if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
 
 
 /*--- Shader Declarations ---*/
@@ -354,7 +357,7 @@ function main () {
 
 		requestAnimationFrame(update);
 	};
-	update(); 
+	update();
 }
 
 function init_buffers (prog) {
@@ -456,9 +459,60 @@ function generate_slice_position_final(slice) {
 function generate_particle_position_final(base, particle) {
 	let particle_position_final = [];
 	particle_position_final[0] = base[0];
-	particle_position_final[1] = base[1];
+	particle_position_final[1] = generate_particle_position_final_y(base[1], particle);
 	particle_position_final[2] = base[2];
 	return particle_position_final;
+}
+
+function generate_particle_position_final_y (base, particle) {
+    if (config.SLICE_HEIGHT == 1) {
+
+		// Return Single Row Height
+		return 0;
+
+	} else if (config.SLICE_HEIGHT == 2) {
+
+		// Calculate Double Row Height
+		let height = 0.5;
+		if (particle >= config.SLICE_PARTICLES / 2) {
+			height *= -1;
+		}
+
+		// Return Double Row Height
+		return height * config.SLICE_SIZE;
+
+	} else {
+
+		// Calculate Height
+		let mirrored_particle = x % (config.SLICE_PARTICLES / 2);
+		let height = 0;
+		if (config.SLICE_HEIGHT % 2 == 0) {
+
+			// Calculate Even Height
+			let quarter = config.SLICE_PARTICLES / 4 - 0.5;
+			let distance = Math.abs(mirrored_particle - quarter);
+			let clamp = Math.abs((config.SLICE_HEIGHT / 2 - 1) - quarter);
+			let value = Math.max(distance, clamp) - clamp;
+			height = config.SLICE_HEIGHT / 2 - 1 - value + 0.5;
+
+		} else {
+
+			// Calculate Odd Height
+			let quarter = config.SLICE_PARTICLES / 4;
+			let distance = Math.abs(mirrored_particle - quarter);
+			let clamp = Math.abs(((config.SLICE_HEIGHT - 1) / 2) - quarter);
+			let value = Math.max(distance, clamp) - clamp;
+			height = (config.SLICE_HEIGHT - 1) / 2 - value;
+		}
+
+		// Account for Sign
+		if (x >= config.SLICE_PARTICLES / 2) {
+			height *= -1;
+		}
+
+		// Return Height
+		return height * config.SLICE_SIZE;
+	}
 }
 
 function initialize_disabled_particle (p) {
