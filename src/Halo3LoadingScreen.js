@@ -25,10 +25,11 @@ let config = {
     SLICE_PARTICLES: 8,                       // Must be even
     SLICE_SIZE: 0.05,                         // Distance between slice particles
     SLICE_THICKNESS: 2,                       // this - 1 = Number of particles separating inner and outer walls
-    TEXTURE_SIZE: 30,                         // Minimum = sqrt(RING_SLICES * SLICE_PARTICLES) 
+    TEXTURE_SIZE: 0,                          // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2,
     PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
 }
+config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 
 
 /*--- Shader Declarations ---*/
