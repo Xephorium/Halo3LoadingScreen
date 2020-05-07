@@ -15,7 +15,7 @@ let config = {
     LENGTH_LOOP:65000,                         // Length of full animation
 	LENGTH_START_DELAY: 800,
 	LENGTH_RING_ASSEMBLY: 63000,
-	LENGTH_SLICE_ASSEMBLY: 1100,
+	LENGTH_SLICE_ASSEMBLY: 1500,
 	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
@@ -28,7 +28,7 @@ let config = {
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 1.5,
-    PARTICLE_WAIT_VARIATION: 500              // Amount of random flux in particle wait
+    PARTICLE_WAIT_VARIATION: 250              // Amount of random flux in particle wait
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
@@ -158,14 +158,15 @@ let vertex_particle = `#version 300 es
 	uniform mat4 u_view_mat;
 	uniform sampler2D u_pos; // obtain particle position from texture
 	uniform float particle_size;
+	uniform vec3 position_camera;
 
 	out vec2 v_texcoord;
 
 	void main() {
-		gl_PointSize = particle_size;
-		
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
+
+		gl_PointSize = (4.0 - distance(pos, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0))) - 0.5;
 
         v_texcoord = a_texcoord; // send texcoord to frag shader
     }
@@ -235,6 +236,8 @@ let fbo_pos_final;         // Particle Final Position
 let fbo_pos;               // Particle Position
 let fbo_data_dynamic;      // Changing Particle Metadata
 let fbo_data_static;       // Unchanging Particle Metadata
+
+let camera_pos = [];
 
 
 /*--- Shader Execution Functions ---*/
@@ -317,7 +320,7 @@ function main () {
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
-    gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);  
+    gl.uniform1i(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
 
 	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
@@ -353,13 +356,14 @@ function main () {
 
         // Update Camera Coordinates
         let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-        let camera_pos_x = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
-        let camera_pos_y = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
-	    let camera_pos_z = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+        camera_pos[0] = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
+        camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
+	    camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
 
 		// Update View Matrix
-		g_view_mat.setLookAt(camera_pos_x, camera_pos_y, camera_pos_z, 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+		g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
 		gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
+		gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
 
         // Render Scene
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
