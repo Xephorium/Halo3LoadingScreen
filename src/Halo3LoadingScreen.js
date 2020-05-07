@@ -20,15 +20,17 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 1500,                         // Final = 2096
+    RING_SLICES: 20,                         // Final = 2096
     RING_RADIUS: 3.5,
     SLICE_PARTICLES: 50,                       // Must be even
     SLICE_SIZE: 0.007,                         // Distance between slice particles
-    SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
+    SLICE_WIDTH: 7,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 1.5,
-    PARTICLE_WAIT_VARIATION: 250              // Amount of random flux in particle wait
+    PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
+    ENABLE_SLICE_INSPECTION: true,
+    ENABLE_PARTICLE_SCALING: false
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
@@ -140,9 +142,9 @@ let frag_data = `#version 300 es
 
 		alpha = 0.0;
 		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
-			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * .5;
+			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0);// * .5;
 		} else if (disabled == 0.0 && delay_time > wait) {
-			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * .5;
+			alpha = min((delay_time - wait) / length_particle_fade, 1.0);// * .5;
 		}
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
@@ -158,6 +160,7 @@ let vertex_particle = `#version 300 es
 	uniform mat4 u_view_mat;
 	uniform sampler2D u_pos; // obtain particle position from texture
 	uniform float particle_size;
+	uniform float particle_scaling;
 	uniform vec3 position_camera;
 
 	out vec2 v_texcoord;
@@ -166,7 +169,13 @@ let vertex_particle = `#version 300 es
 		vec4 pos = texture(u_pos, a_texcoord); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
 
-		gl_PointSize = (4.0 - distance(pos, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0))) - 0.5;
+        // Scale Particles Based on Camera Distance
+        if (particle_scaling == 1.0) {
+        	float distance = distance(pos, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0));
+		    gl_PointSize = (4.0 - distance) - 0.5;
+        } else {
+        	gl_PointSize = particle_size;
+        }
 
         v_texcoord = a_texcoord; // send texcoord to frag shader
     }
@@ -312,15 +321,39 @@ function main () {
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
-    // Define View Matrix
-	g_proj_mat.setPerspective(100, canvas.width/canvas.height, .02, 10000);
-	g_view_mat.setLookAt(0, 5, 10, 0, -0.5, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+    // Set Up Camera
+    if (config.ENABLE_SLICE_INSPECTION) {
+
+    	// Define Slice Inspection Position
+        camera_pos[0] = -config.RING_RADIUS;
+        camera_pos[1] = 0;
+        camera_pos[2] = 1;
+
+        // Define Slice Inspection View Matrix
+    	g_proj_mat.setPerspective(30, canvas.width/canvas.height, .02, 10000);
+    	// LookAt Parameters: camera pos, focus pos, up vector      
+        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -config.RING_RADIUS, 0, 0, 0, 1, 0);
+
+    } else {
+
+    	// Define Standard Initial Position
+        camera_pos[0] = 0;
+        camera_pos[1] = 5;
+        camera_pos[2] = 10;
+
+	    // Define Standard View Matrix
+        g_proj_mat.setPerspective(100, canvas.width/canvas.height, .02, 10000);
+        // LookAt Parameters: camera pos, focus pos, up vector 
+	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, -0.5, 0, 0, 1, 0); // camera pos, focus pos, up vector
+    }
 
     // Send Variables to Particle Program
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
     gl.uniform1i(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
+    gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
 
 	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
@@ -354,16 +387,21 @@ function main () {
         // Clear Canvas
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // Update Camera Coordinates
-        let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-        camera_pos[0] = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
-        camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
-	    camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+        // Update Camera
+        if (!config.ENABLE_SLICE_INSPECTION) {
 
-		// Update View Matrix
-		g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
-		gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
-		gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+        	// Update Position
+			let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
+			camera_pos[0] = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
+			camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
+			camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+
+			// Update View Matrix
+			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
+			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
+        }
 
         // Render Scene
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
