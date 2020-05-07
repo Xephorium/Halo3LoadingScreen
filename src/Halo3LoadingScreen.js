@@ -22,10 +22,10 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 100,                        // Final = 2096
     RING_RADIUS: 3.5,
-    SLICE_PARTICLES: 1,                       // Must be even
+    SLICE_PARTICLES: 8,                       // Must be even
     SLICE_SIZE: 0.05,                         // Distance between slice particles
     SLICE_THICKNESS: 2,                       // this - 1 = Number of particles separating inner and outer walls
-    TEXTURE_SIZE: 10,                         // Value squared is max particle count
+    TEXTURE_SIZE: 30,                         // Minimum = sqrt(RING_SLICES * SLICE_PARTICLES) 
     PARTICLE_SIZE: 2,
     PARTICLE_WAIT_VARIATION: 100              // Amount of random flux in particle wait
 }
