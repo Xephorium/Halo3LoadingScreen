@@ -20,17 +20,17 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
-    RING_SLICES: 20,                         // Final = 2096
+    RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
-    SLICE_PARTICLES: 50,                       // Must be even
-    SLICE_SIZE: 0.007,                         // Distance between slice particles
-    SLICE_WIDTH: 7,                           // Number of particles on top and bottom edges of ring
+    SLICE_PARTICLES: 60,                       // Must be even
+    SLICE_SIZE: 0.006,                         // Distance between slice particles
+    SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 1.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
-    ENABLE_SLICE_INSPECTION: true,
-    ENABLE_PARTICLE_SCALING: false
+    ENABLE_SLICE_INSPECTION: false,
+    ENABLE_PARTICLE_SCALING: true
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
