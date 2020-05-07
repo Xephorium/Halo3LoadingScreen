@@ -12,9 +12,9 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:70000,                         // Length of full animation
+    LENGTH_LOOP:65000,                         // Length of full animation
 	LENGTH_START_DELAY: 800,
-	LENGTH_RING_ASSEMBLY: 68000,
+	LENGTH_RING_ASSEMBLY: 63000,
 	LENGTH_SLICE_ASSEMBLY: 1100,
 	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
@@ -23,7 +23,7 @@ let config = {
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
     SLICE_PARTICLES: 50,                       // Must be even
-    SLICE_SIZE: 0.01,                         // Distance between slice particles
+    SLICE_SIZE: 0.007,                         // Distance between slice particles
     SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
@@ -354,7 +354,7 @@ function main () {
         // Update Camera Coordinates
         let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
         let camera_pos_x = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
-        let camera_pos_y = -0.15 * (Math.sin(2 * Math.PI * progress + 1) + 1);
+        let camera_pos_y = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
 	    let camera_pos_z = 4.0 * Math.sin(2 * Math.PI * progress + 1);
 
 		// Update View Matrix
