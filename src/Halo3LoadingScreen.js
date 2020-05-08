@@ -22,6 +22,10 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
+    AMBIENT_PARTICLES: 1000,
+    AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
+    AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
+    AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 60,                       // Must be even
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
@@ -31,13 +35,13 @@ let config = {
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.5,                   // Multiplier for camera-position dependent effects
+    CAMERA_DIST_FACTOR: 1.7,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
 config.PARTICLE_SIZE = config.PARTICLE_SIZE * config.RESOLUTION_SCALE;
-config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
+config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES + config.AMBIENT_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
 else if (config.SLICE_WIDTH == config.SLICE_PARTICLES / 2) config.SLICE_HEIGHT = 2;
 else config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) + 2;
@@ -46,7 +50,7 @@ else config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) +
 /*--- Shader Declarations ---*/
 
 let frag_position = `#version 300 es
-	precision mediump float;
+	precision highp float;
 
     // Input Variables
     uniform sampler2D texture_initial_position;
@@ -97,24 +101,40 @@ let frag_position = `#version 300 es
 	void main() {
 		vec4 initial_position = texture(texture_initial_position, v_coord);
 		vec4 final_position = texture(texture_final_position, v_coord);
+		vec4 current_position = texture(texture_position, v_coord);
 		float wait = texture(texture_data_static, v_coord).r;
 		float seed = texture(texture_data_static, v_coord).g;
+		float ambient = texture(texture_data_static, v_coord).b;
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		
-        // Calculate Animation Factor
-		float factor = 0.0;
-		if (delay_time > wait) {
-			factor = min((delay_time - wait) / length_slice_assembly, 1.0);
-		}
+        if (ambient == 1.0) {
+        
+            // Update Position (final_position acts as velocity for ambient particles)
+            cg_FragColor = vec4(
+                current_position[0] + final_position[0],
+                current_position[1] + final_position[1],
+                current_position[2] + final_position[2],
+                1
+            );
 
-		// Generate Detour Position (For gently curved particle trajectory)
-		vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
+        } else {
 
-		// Find Current Position Along Trajectory Curve
-		vec4 position = interpolate_location(initial_position, detour_position, final_position, factor);
+			// Calculate Animation Factor
+			float factor = 0.0;
+			if (delay_time > wait) {
+				factor = min((delay_time - wait) / length_slice_assembly, 1.0);
+			}
 
-        cg_FragColor = position;
+			// Generate Detour Position (For gently curved particle trajectory)
+			vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
+
+			// Find Current Position Along Trajectory Curve
+			vec4 position = interpolate_location(initial_position, detour_position, final_position, factor);
+
+			cg_FragColor = position;
+
+        }
 	}
 `;
 
@@ -160,9 +180,9 @@ let frag_data = `#version 300 es
 
         // Calculate & Set Alpha
         alpha = 0.0;
-		if (ambient == 0.0  && delay_time > length_loop - length_scene_fade) {
+		if (delay_time > length_loop - length_scene_fade) {
 			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * alpha_scale;
-		} else if (ambient == 0.0 && delay_time > wait) {
+		} else if (delay_time > wait) {
 			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * alpha_scale;
 		}
 		    
@@ -270,6 +290,7 @@ let fbo_data_dynamic;      // Changing Particle Metadata
 let fbo_data_static;       // Unchanging Particle Metadata
 
 let camera_pos = [];
+let random = new MersenneTwister();
 
 
 /*--- Shader Execution Functions ---*/
@@ -655,24 +676,28 @@ function generate_particle_position_final_vertical (base, particle) {
 function initialize_ambient_particle (p) {
 
     // Generate Initial Position
-	p.position_initial[0] = 0.0;
-	p.position_initial[1] = 0.0;
-	p.position_initial[2] = 0.0;
+	p.position_initial[0] = better_random() * config.AMBIENT_WIDTH;
+	p.position_initial[1] = better_random() * config.AMBIENT_HEIGHT;
+	p.position_initial[2] = better_random() * config.AMBIENT_WIDTH;
 
 	// Generate Final Position
-	p.position_final[0] = 0.0;
-	p.position_final[1] = 0.0;
-	p.position_final[2] = 0.0;
+	p.position_final[0] = 0;
+	p.position_final[1] = 0;
+	p.position_final[2] = 0;
 
     // Generate Position
-	p.position[0] = 0.0;
-	p.position[1] = 0.0;
-	p.position[2] = 0.0;
+	p.position[0] = p.position_initial[0];
+	p.position[1] = p.position_initial[1];
+	p.position[2] = p.position_initial[2];
 
     // Generate Ambient Data
     p.wait = 0.0;
     p.seed = 0.0;
     p.ambient = 1;
+}
+
+function better_random() {
+	return random.random() * 2 - 1;
 }
 
 
