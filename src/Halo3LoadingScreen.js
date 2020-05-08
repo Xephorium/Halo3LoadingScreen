@@ -362,7 +362,7 @@ function main () {
         camera_pos[2] = 10;
 
 	    // Define Standard View Matrix
-        g_proj_mat.setPerspective(100, canvas.width/canvas.height, .02, 10000);
+        g_proj_mat.setPerspective(85, canvas.width/canvas.height, .02, 10000);
         // LookAt Parameters: camera pos, focus pos, up vector 
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, -0.5, 0, 0, 1, 0); // camera pos, focus pos, up vector
     }
@@ -412,9 +412,9 @@ function main () {
 
         	// Update Position
 			let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-			camera_pos[0] = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
+			camera_pos[0] = 4.15 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
 			camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
-			camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+			camera_pos[2] = 4.15 * Math.sin(2 * Math.PI * progress + 1);
 			focus_pos_y = -(camera_pos[1] / 2);
 
 			// Update View Matrix
