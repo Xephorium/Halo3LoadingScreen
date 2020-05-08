@@ -22,16 +22,16 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 1000,
+    AMBIENT_PARTICLES: 5000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
-    SLICE_PARTICLES: 60,                       // Must be even
+    SLICE_PARTICLES: 55,                       // Must be even
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 2.5,
+    PARTICLE_SIZE: 2.0,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
