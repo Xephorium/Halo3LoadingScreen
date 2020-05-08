@@ -29,6 +29,7 @@ let config = {
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
+    PARTICLE_SIZE_CLAMP: false,                 // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.75,                  // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
@@ -179,6 +180,7 @@ let vertex_particle = `#version 300 es
 	uniform sampler2D u_pos; // obtain particle position from texture
 	uniform float particle_size;
 	uniform float particle_scaling;
+	uniform float particle_size_clamp;
 	uniform float camera_dist_max;
 	uniform float camera_dist_factor;
 	uniform vec3 position_camera;
@@ -192,7 +194,8 @@ let vertex_particle = `#version 300 es
         // Scale Particles Based on Camera Distance
         if (particle_scaling == 1.0) {
         	float distance = distance(pos, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0));
-		    gl_PointSize = min(particle_size * (1.0 / (distance)), particle_size); // Clamp Max to Particle Size
+		    gl_PointSize = particle_size * (1.0 / (distance));
+		    if (particle_size_clamp == 1.0) gl_PointSize = min(gl_PointSize, particle_size);
         } else {
         	gl_PointSize = particle_size;
         }
@@ -374,6 +377,7 @@ function main () {
     gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
     gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
     gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
+    gl.uniform1f(prog_particle.uniforms.particle_size_clamp, config.PARTICLE_SIZE_CLAMP ? 1 : 0);
 
 	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
@@ -412,9 +416,9 @@ function main () {
 
         	// Update Position
 			let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-			camera_pos[0] = 4.15 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
+			camera_pos[0] = 4.25 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
 			camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
-			camera_pos[2] = 4.15 * Math.sin(2 * Math.PI * progress + 1);
+			camera_pos[2] = 4.25 * Math.sin(2 * Math.PI * progress + 1);
 			focus_pos_y = -(camera_pos[1] / 2);
 
 			// Update View Matrix
