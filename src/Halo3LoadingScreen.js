@@ -16,24 +16,24 @@ let config = {
 	LENGTH_START_DELAY: 800,
 	LENGTH_RING_ASSEMBLY: 63000,
 	LENGTH_SLICE_ASSEMBLY: 1500,
-	LENGTH_PARTICLE_FADE: 1000,               // Length of each particle's fade-in
-	LENGTH_SCENE_FADE: 1500,                  // Length of scene fade-out
-	RESOLUTION_SCALE: 1.0,                    // Default: 1080p
+	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
+	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
+	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
     SLICE_PARTICLES: 60,                       // Must be even
     SLICE_SIZE: 0.006,                         // Distance between slice particles
-    SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
-    SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
-    TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
+    SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
+    SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
+    TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
-    CAMERA_DIST_MAX: 14,                        // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
-    ENABLE_SLICE_INSPECTION: false,
-    ENABLE_PARTICLE_SCALING: true,
-    ENABLE_ALPHA_SCALING: true
+    CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
+    CAMERA_DIST_FACTOR: 1.75,                  // Multiplier for camera-position dependent effects
+    ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
+    ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
+    ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
 config.PARTICLE_SIZE = config.PARTICLE_SIZE * config.RESOLUTION_SCALE;
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
