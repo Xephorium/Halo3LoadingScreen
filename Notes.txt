@@ -79,13 +79,13 @@ Data Static
 
 /*--- Painful Lessons ---*/
 
-1. JavaScript's decimal math is broken. Any operation that would suffer from unpredictable
-   rounding errors should make use of an external library. I particularly like decimal.js.
+> JavaScript's decimal math is broken. Any operation that would suffer from unpredictable
+  rounding errors should make use of an external library. I particularly like decimal.js.
 
-2. Even if no operation is performed on a given frame buffer object, its values will
-   subtly change over time when returned from a shader. I spent about four hours pulling
-   my hair out trying to discern why each particle's unchanging wait value became more
-   random over the course of each simulation. This is why.
+> Even if no operation is performed on a given frame buffer object, its values will
+  subtly change over time when returned from a shader. I spent about four hours pulling
+  my hair out trying to discern why each particle's unchanging wait value became more
+  random over the course of each simulation. This is why.
 
 
 /*--- Dev Diary ---*/
@@ -108,8 +108,9 @@ Camera Movement Animation
   trig equations that trace the desired path as closely as possible. It's a relatively
   quick fix, but results in a mathematical mess that's impossible to read or change later.
   Even if I didn't mind the mess, the camera animation in this project is just too complex
-  for the approach to be reasonable. So, it's time to learn splines! It's hard to imagine
-  having more flexibility than a method that takes (locations[], factor) and returns a point
-  in 3D space. Some resources I've gathered in early research:
+  for the approach to be reasonable. So, it's time to learn splines! The quadratic spline
+  interpolator above is great, but it's hard to imagine having more flexibility than a
+  method that takes (locations[], factor) and returns a point in 3D space. Some resources
+  I've gathered in early research:
 
   The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html
