@@ -19,7 +19,7 @@ let config = {
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
-	BACKGROUND_COLOR: [0.11, 0.13, .17, 1.0],
+	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
     AMBIENT_PARTICLES: 10000,
