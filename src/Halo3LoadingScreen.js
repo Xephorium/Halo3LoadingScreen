@@ -12,26 +12,26 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:65000,                         // Length of full animation
+    LENGTH_LOOP:72000,                         // Length of full animation
 	LENGTH_START_DELAY: 800,
 	LENGTH_RING_ASSEMBLY: 63000,
 	LENGTH_SLICE_ASSEMBLY: 1500,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
-	BACKGROUND_COLOR: [0.1, 0.125, 0.2, 1.0],
+	BACKGROUND_COLOR: [0.034, 0.055, .105, 1.0],
     RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 5000,
+    AMBIENT_PARTICLES: 10000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
-    SLICE_PARTICLES: 55,                       // Must be even
+    SLICE_PARTICLES: 52,                       // Must be even
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 2.0,
+    PARTICLE_SIZE: 2.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
@@ -108,17 +108,7 @@ let frag_position = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		
-        if (ambient == 1.0) {
-        
-            // Update Position (final_position acts as velocity for ambient particles)
-            cg_FragColor = vec4(
-                current_position[0] + final_position[0],
-                current_position[1] + final_position[1],
-                current_position[2] + final_position[2],
-                1
-            );
-
-        } else {
+        if (ambient != 1.0) {
 
 			// Calculate Animation Factor
 			float factor = 0.0;
@@ -234,7 +224,7 @@ let frag_particle = `#version 300 es
 
 	void main() {
 		float alpha = texture(texture_data_dynamic, v_texcoord).r;
-		cg_FragColor = vec4(0.9, 0.9, 1.0, alpha);  
+		cg_FragColor = vec4(0.458, 0.770, .941, alpha);
 	}
 `;
 
@@ -402,13 +392,38 @@ function main () {
 
 	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
-	let particle_index = 0; 
-	for (let slice = 0; slice < config.RING_SLICES; slice++) {
+	let particle_index = 0;
+
+    // Generate First Slice
+	for (let particle = 0; particle < config.SLICE_PARTICLES; particle++) {
+		pa[particle_index] = new Particle();
+		initialize_active_particle(pa[particle_index], 0, particle);
+		particle_index++;
+	}
+
+    // Generate Mirrored Slices
+	for (let slice = 1; slice < (config.RING_SLICES / 2); slice++) {
+
+		// Generate Slice
 		for (let particle = 0; particle < config.SLICE_PARTICLES; particle++) {
 			pa[particle_index] = new Particle();
 		    initialize_active_particle(pa[particle_index], slice, particle);
-		    particle_index++;	
+		    particle_index++;
 		}
+
+		// Mirror Slice
+		for (let particle = 0; particle < config.SLICE_PARTICLES; particle++) {
+			let old_particle_index = particle_index - config.SLICE_PARTICLES;
+			pa[particle_index] = invert_particle_over_x(pa[old_particle_index]);
+		    particle_index++;
+		}
+	}
+
+	// Generate Last Slice
+	for (let particle = 0; particle < config.SLICE_PARTICLES; particle++) {
+		pa[particle_index] = new Particle();
+		initialize_active_particle(pa[particle_index], (config.RING_SLICES / 2), particle);
+		particle_index++;
 	}
 
 	// Generate Ambient Particles
@@ -437,9 +452,9 @@ function main () {
 
         	// Update Position
 			let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-			camera_pos[0] = 4.25 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
-			camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
-			camera_pos[2] = 4.25 * Math.sin(2 * Math.PI * progress + 1);
+			camera_pos[0] = 4.25 * Math.sin(Math.PI * progress + 1 - Math.PI / 2);
+			camera_pos[1] = -0.15 * (Math.sin(Math.PI * progress + 1) -1.5);
+			camera_pos[2] = 4.25 * Math.sin(Math.PI * progress + 1);
 			focus_pos_y = -(camera_pos[1] / 2);
 
 			// Update View Matrix
@@ -538,7 +553,7 @@ function initialize_active_particle (p, slice, particle) {
 
     // Generate Wait Time
     let wait_window = config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY;
-    let slice_wait = new Decimal(wait_window).dividedBy(new Decimal(config.RING_SLICES - 1));
+    let slice_wait = new Decimal(wait_window).dividedBy((new Decimal(config.RING_SLICES)).dividedBy(new Decimal(2)));
     let base_wait = slice_wait.times(new Decimal(slice));
     let final_wait = base_wait.plus((new Decimal(Math.random())).times(new Decimal(config.PARTICLE_WAIT_VARIATION)));
     p.wait = final_wait.toPrecision(5);
@@ -696,6 +711,34 @@ function initialize_ambient_particle (p) {
     p.ambient = 1;
 }
 
+function invert_particle_over_x (p) {
+	let new_particle = new Particle();
+
+	// Invert Initial Position
+	new_particle.position_initial[0] = p.position_initial[0];
+	new_particle.position_initial[1] = p.position_initial[1];
+	new_particle.position_initial[2] = -p.position_initial[2];
+
+	// Generate Final Position
+	new_particle.position_final[0] = p.position_final[0];
+	new_particle.position_final[1] = p.position_final[1];
+	new_particle.position_final[2] = -p.position_final[2];
+
+    // Generate Position
+	new_particle.position[0] = p.position[0];
+	new_particle.position[1] = p.position[1];
+	new_particle.position[2] = -p.position[2];
+
+    // Generate Ambient Data
+    new_particle.alpha = p.alpha;
+    new_particle.brightness = p.brightness;
+    new_particle.wait = p.wait;
+    new_particle.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+    new_particle.ambient = p.ambient;
+
+    return new_particle;
+}
+
 function better_random() {
 	return random.random() * 2 - 1;
 }
@@ -733,9 +776,9 @@ function create_fbos (pa) {
 
         // Changing Particle Data
 		data_dynamic.push(pa[i].alpha);
-		data_dynamic.push(pa[i].wait);
-		data_dynamic.push(pa[i].bightness);
-		data_dynamic.push(pa[i].seed);
+		data_dynamic.push(pa[i].brightness);
+		data_dynamic.push(1);
+		data_dynamic.push(1);
 
 		// Unchanging Particle Data
 		data_static.push(pa[i].wait);
