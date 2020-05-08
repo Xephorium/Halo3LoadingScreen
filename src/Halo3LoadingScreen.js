@@ -27,14 +27,15 @@ let config = {
     SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 1,
+    PARTICLE_SIZE: 2.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     CAMERA_DIST_MAX: 14,                        // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,
-    ENABLE_PARTICLE_SCALING: false,
+    ENABLE_PARTICLE_SCALING: true,
     ENABLE_ALPHA_SCALING: true
 }
+config.PARTICLE_SIZE = config.PARTICLE_SIZE * config.RESOLUTION_SCALE;
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
 else if (config.SLICE_WIDTH == config.SLICE_PARTICLES / 2) config.SLICE_HEIGHT = 2;
@@ -148,11 +149,11 @@ let frag_data = `#version 300 es
         float disabled = texture(texture_data_static, v_coord).b;
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
+		float distance = abs(distance(position, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0)));
 
         // Calculate & Set Alpha Scale
  		float alpha_scale = 1.0;
  		if (alpha_fade == 1.0) {
- 			float distance = abs(distance(position, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0)));
             alpha_scale = 1.0 - ((distance * camera_dist_factor) / camera_dist_max);
         }
 
@@ -178,6 +179,8 @@ let vertex_particle = `#version 300 es
 	uniform sampler2D u_pos; // obtain particle position from texture
 	uniform float particle_size;
 	uniform float particle_scaling;
+	uniform float camera_dist_max;
+	uniform float camera_dist_factor;
 	uniform vec3 position_camera;
 
 	out vec2 v_texcoord;
@@ -189,7 +192,7 @@ let vertex_particle = `#version 300 es
         // Scale Particles Based on Camera Distance
         if (particle_scaling == 1.0) {
         	float distance = distance(pos, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0));
-		    gl_PointSize = (4.0 - distance) - 0.5;
+		    gl_PointSize = min(particle_size * (1.0 / (distance)), particle_size); // Clamp Max to Particle Size
         } else {
         	gl_PointSize = particle_size;
         }
@@ -370,7 +373,7 @@ function main () {
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
     gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
     gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
-    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
+    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
 
 	// Generate Ring Particles
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
@@ -418,7 +421,7 @@ function main () {
 			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, focus_pos_y, 0, 0, 1, 0);
 			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
-			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
+			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
         }
 
         // Render Scene
@@ -846,6 +849,8 @@ function update_position (position_initial, position_final, position, data_stati
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.camera_dist_max, config.CAMERA_DIST_MAX);
+    gl.uniform1f(program.uniforms.camera_dist_factor, config.CAMERA_DIST_FACTOR);
 
     gl.viewport(0, 0, position.width, position.height);
  
