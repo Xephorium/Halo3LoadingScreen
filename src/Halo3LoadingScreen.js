@@ -89,7 +89,7 @@ let frag_position = `#version 300 es
 
 	// Quadratic Spline Interpolator
 	// Note: Returns a position in 3D space representing a particle's location on
-	//       a smooth bezier curve between three points. 
+	//       a smooth bezier curve between three points given factor t [0-1]. 
 	// Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
 	vec4 interpolate_location(vec4 v1, vec4 v2, vec4 v3, float t) {
          float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);

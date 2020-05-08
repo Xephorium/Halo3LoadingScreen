@@ -4,27 +4,7 @@
 //////////////////////////////
 
 
-/*--- GPU Particle Architecture ---*/
-
-Ring Particle Animation Requirements 
-  - Initial Position      // Calculated Once
-  - Final Position        // Calculated Once
-  - Wait                  // Calculated Once
-  - Factor                // Dynamic: clamp01((currentTime - wait) / LENGTH)
-  - Alpha                 // Dynamically calculated from factor
-  - Brightness            // Dynamically calculated from factor
-  - Position              // Dynamically calculated from factor
-  - Color                 // Dynamically calculated from alpha + factor
-
-Ring Particle Shaders
-  - vertex/frag particle
-
-
-Ambient Particle Animation Requirements
-  - TBD. Likely animated perlin noise used for pseudorandom drift.
-
-
-/*--- Texture Data ---*/
+/*--- Texture Data Organization ---*/
 
 Initial Position
   R: x pos
@@ -57,27 +37,44 @@ Data Static
   A: ---
 
 
-/*--- Pseudocode ---*/
+/*--- Frame Buffer Objects ---*/
 
-Shader: Position Initial
-Shader: Position Final
-Shader: Data
-  > Alpha (R)               // Fades out early
-  > Wait (G)                // Constant
-  > Brightness (B)          // Burst toward end
-  > Seed (A)                // Random for each particle
+1. fbo_pos_initial   // Unchanging
+2. fbo_pos_final     // Unchanging
+3. fbo_pos           // Updated by prog_position
+4. fbo_data_dynamic  // Updated by prog_data
+5. fbo_data_static   // Unchanging
 
 
-/*--- Math ---*/
+/*--- Shader Programs ---*/
 
-Dynamic Velocity Smoothing Equation (Used for each ring particle's path.)
+1. prog_position    // Updates each particle position
+2. prog_data        // Updates each particle's dynamic data
+3. prog_particle    // Renders particles
+4. prog_display     // Displays render to screen
 
-    velocity = (1 - s(t))a + b(s(t))
 
-    a    = starting velocity
-    b    = ending velocity
-    s(t) = Smooth interpolation from 0 to 1 given input t
-    t    = time
+/*--- Cool & Useful Calculations ---*/
+
+  // Procedural Float Generator [-1, 1]
+  // Note: Consistently returns the same pseudo-random float for the same two input values.  
+  float generate_float(float value_one, float value_two) {
+      float seed_one = 78.0;
+      float seed_two = 1349.0;
+      float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
+      return magnitude;
+  }
+
+  // Quadratic Spline Interpolator
+  // Note: Returns a position in 3D space representing a particle's location on
+  //       a smooth bezier curve between three points given factor t [0-1]. 
+  // Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
+  vec3 interpolate_location(vec3 v1, vec3 v2, vec3 v3, float t) {
+         float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);
+         float y = (((1.0 - t) * (1.0 - t)) * v1.y) + (2.0 * t * (1.0 - t) * v2.y) + ((t * t) * v3.y);
+         float z = (((1.0 - t) * (1.0 - t)) * v1.z) + (2.0 * t * (1.0 - t) * v2.z) + ((t * t) * v3.z);
+         return vec3(x, y, z);
+  }
 
 
 /*--- Painful Lessons ---*/
@@ -89,3 +86,30 @@ Dynamic Velocity Smoothing Equation (Used for each ring particle's path.)
    subtly change over time when returned from a shader. I spent about four hours pulling
    my hair out trying to discern why each particle's unchanging wait value became more
    random over the course of each simulation. This is why.
+
+
+/*--- Dev Diary ---*/
+
+Slice Particle Positions
+  After two days and an accidental all-nighter, I've been unable to derive a bug-free
+  algorithm that generates final particle positions for each slice given a variable
+  particle count per slice. But even if I had figured it out, the apprach would have
+  had a few drawbacks. For one, it's verbose. My current imperfect implementation comes
+  out at ~100 lines of obscure calculations. The algorithm also would have restricted
+  slices to a rectangular shape, which is artistically inflexible and doesn't match the
+  original animation. For these reasons, I've decided to take a more literal approach
+  moving forward. Rather than a complex generation system, I'd like to just write a
+  method that returns hard coded position offsets for each slice particle. It's not
+  sophisticated. But it is flexible, bug-proof, and can be changed in about 10 minutes
+  with paper and pencil. The change will make for a quick little refactor down the line.
+
+Camera Movement Animation
+  In previous projects that required smooth position animation, I've spent time deriving
+  trig equations that trace the desired path as closely as possible. It's a relatively
+  quick fix, but results in a mathematical mess that's impossible to read or change later.
+  Even if I didn't mind the mess, the camera animation in this project is just too complex
+  for the approach to be reasonable. So, it's time to learn splines! It's hard to imagine
+  having more flexibility than a method that takes (locations[], factor) and returns a point
+  in 3D space. Some resources I've gathered in early research:
+
+  The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html
