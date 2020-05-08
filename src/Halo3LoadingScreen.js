@@ -29,8 +29,11 @@ let config = {
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 1.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
+    CAMERA_DIST_MAX: 14,                        // Maximum distance particles are expected to be from camera
+    CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,
-    ENABLE_PARTICLE_SCALING: true
+    ENABLE_PARTICLE_SCALING: false,
+    ENABLE_ALPHA_SCALING: true
 }
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
@@ -116,13 +119,18 @@ let frag_position = `#version 300 es
 let frag_data = `#version 300 es
 	precision mediump float;
 
+    uniform sampler2D texture_position;
 	uniform sampler2D texture_data_dynamic;
 	uniform sampler2D texture_data_static;
+	uniform vec3 position_camera;
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
 	uniform float length_particle_fade;
 	uniform float length_scene_fade;
+	uniform float camera_dist_max;
+	uniform float camera_dist_factor;
+	uniform float alpha_fade;
 	in vec2 v_coord;
 
 	out vec4 cg_FragColor; 
@@ -132,6 +140,7 @@ let frag_data = `#version 300 es
 	}
 
 	void main() {
+		vec4 position = texture(texture_position, v_coord);
 		float alpha = texture(texture_data_dynamic, v_coord).r;
 		float brightness = texture(texture_data_dynamic, v_coord).g;
         float wait = texture(texture_data_static, v_coord).r;
@@ -140,11 +149,19 @@ let frag_data = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 
-		alpha = 0.0;
+        // Calculate & Set Alpha Scale
+ 		float alpha_scale = 1.0;
+ 		if (alpha_fade == 1.0) {
+ 			float distance = abs(distance(position, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0)));
+            alpha_scale = 1.0 - ((distance * camera_dist_factor) / camera_dist_max);
+        }
+
+        // Calculate & Set Alpha
+        alpha = 0.0;
 		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
-			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0);// * .5;
+			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * alpha_scale;
 		} else if (disabled == 0.0 && delay_time > wait) {
-			alpha = min((delay_time - wait) / length_particle_fade, 1.0);// * .5;
+			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * alpha_scale;
 		}
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
@@ -397,7 +414,7 @@ function main () {
 			camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
 
 			// Update View Matrix
-			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0); // eyePos - focusPos - upVector  
+			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
 			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
 			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
@@ -405,7 +422,7 @@ function main () {
 
         // Render Scene
 		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
-		update_data(fbo_data_dynamic, fbo_data_static);
+		update_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 	    draw_particle(fbo_pos, fbo_data_dynamic, pa); 
 
 		requestAnimationFrame(update);
@@ -838,20 +855,27 @@ function update_position (position_initial, position_final, position, data_stati
     }  
 }
 
-function update_data (data_dynamic, data_static) {
+function update_data (position, data_dynamic, data_static) {
     let program = prog_data;
     program.bind_time();
 
-    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(1));
-    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(1));
+    if (position.single) gl.uniform1i(program.uniforms.texture_position, position.attach(1));
+    else gl.uniform1i(program.uniforms.texture_position, position.read.attach(1));
 
-    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(2));
-    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(2));
+    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(2));
+    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
 
+    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(3));
+    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
+
+    gl.uniform3fv(program.uniforms.position_camera, camera_pos);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.camera_dist_max, config.CAMERA_DIST_MAX);
+    gl.uniform1f(program.uniforms.camera_dist_factor, config.CAMERA_DIST_FACTOR);
+    gl.uniform1f(program.uniforms.alpha_fade, config.ENABLE_ALPHA_SCALING ? 1 : 0); 
 
     gl.viewport(0, 0, data_dynamic.width, data_dynamic.height);
  
