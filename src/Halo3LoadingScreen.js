@@ -29,9 +29,9 @@ let config = {
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2.5,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
-    PARTICLE_SIZE_CLAMP: false,                 // Whether to clamp max particle size when particle scaling enabled
+    PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.75,                  // Multiplier for camera-position dependent effects
+    CAMERA_DIST_FACTOR: 1.5,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -147,7 +147,7 @@ let frag_data = `#version 300 es
 		float brightness = texture(texture_data_dynamic, v_coord).g;
         float wait = texture(texture_data_static, v_coord).r;
         float seed = texture(texture_data_static, v_coord).g;
-        float disabled = texture(texture_data_static, v_coord).b;
+        float ambient = texture(texture_data_static, v_coord).b;
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float distance = abs(distance(position, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0)));
@@ -160,9 +160,9 @@ let frag_data = `#version 300 es
 
         // Calculate & Set Alpha
         alpha = 0.0;
-		if (disabled == 0.0  && delay_time > length_loop - length_scene_fade) {
+		if (ambient == 0.0  && delay_time > length_loop - length_scene_fade) {
 			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * alpha_scale;
-		} else if (disabled == 0.0 && delay_time > wait) {
+		} else if (ambient == 0.0 && delay_time > wait) {
 			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * alpha_scale;
 		}
 		    
@@ -390,10 +390,10 @@ function main () {
 		}
 	}
 
-	// Generate Disabled Particles
+	// Generate Ambient Particles
 	for (let x = particle_index; x < pa.length; x++) {
 		pa[x] = new Particle();
-		initialize_disabled_particle(pa[x]);
+		initialize_ambient_particle(pa[x]);
 	}
 
     // Create VAO Image
@@ -493,7 +493,7 @@ function Particle () {
 	this.wait = 0.0;
 	this.brightness = 1;
 	this.seed = 0;
-	this.disabled = 0;
+	this.ambient = 0;
 }
 
 function initialize_active_particle (p, slice, particle) {
@@ -652,7 +652,7 @@ function generate_particle_position_final_vertical (base, particle) {
 	}
 }
 
-function initialize_disabled_particle (p) {
+function initialize_ambient_particle (p) {
 
     // Generate Initial Position
 	p.position_initial[0] = 0.0;
@@ -669,10 +669,10 @@ function initialize_disabled_particle (p) {
 	p.position[1] = 0.0;
 	p.position[2] = 0.0;
 
-    // Generate Disabled Data
+    // Generate Ambient Data
     p.wait = 0.0;
     p.seed = 0.0;
-    p.disabled = 1;
+    p.ambient = 1;
 }
 
 
@@ -715,7 +715,7 @@ function create_fbos (pa) {
 		// Unchanging Particle Data
 		data_static.push(pa[i].wait);
 		data_static.push(pa[i].seed);
-		data_static.push(pa[i].disabled);
+		data_static.push(pa[i].ambient);
 		data_static.push(1);
 
 	}
