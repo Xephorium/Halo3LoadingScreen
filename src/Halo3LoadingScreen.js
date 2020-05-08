@@ -27,7 +27,7 @@ let config = {
     SLICE_WIDTH: 4,                           // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                        // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                        // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 1.5,
+    PARTICLE_SIZE: 1,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     CAMERA_DIST_MAX: 14,                        // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
@@ -368,7 +368,7 @@ function main () {
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
-    gl.uniform1i(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
+    gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
     gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
     gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
 
@@ -412,9 +412,10 @@ function main () {
 			camera_pos[0] = 4.0 * Math.sin(2 * Math.PI * progress + 1 - Math.PI / 2);
 			camera_pos[1] = -0.15 * (Math.sin(2 * Math.PI * progress + 1) -1.5);
 			camera_pos[2] = 4.0 * Math.sin(2 * Math.PI * progress + 1);
+			focus_pos_y = -(camera_pos[1] / 2);
 
 			// Update View Matrix
-			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
+			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, focus_pos_y, 0, 0, 1, 0);
 			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
 			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 0 : 1);
