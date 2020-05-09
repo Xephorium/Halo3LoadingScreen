@@ -80,7 +80,7 @@ Data Static
 /*--- Painful Lessons ---*/
 
 > JavaScript's decimal math is broken. Any operation that would suffer from unpredictable
-  rounding errors should make use of an external library. I particularly like decimal.js.
+  rounding errors should make use of an external library. In this project, I use decimal.js.
 
 > Even if no operation is performed on a given frame buffer object, its values will
   subtly change over time when returned from a shader. I spent about four hours pulling
