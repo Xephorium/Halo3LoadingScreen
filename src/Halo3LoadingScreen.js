@@ -542,9 +542,9 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + ((Math.random() - 0.5) * 1.5);
-	p.position_initial[1] = p.position_final[1] + ((Math.random() - 0.5) * .2);
-	p.position_initial[2] = p.position_final[2] + ((Math.random() - 0.5) * 1.5);
+	p.position_initial[0] = p.position_final[0] + better_random() * 1.5;
+	p.position_initial[1] = p.position_final[1] + better_random() * .2;
+	p.position_initial[2] = p.position_final[2] + better_random() * 1.5;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -555,11 +555,11 @@ function initialize_active_particle (p, slice, particle) {
     let wait_window = config.LENGTH_RING_ASSEMBLY - config.LENGTH_SLICE_ASSEMBLY;
     let slice_wait = new Decimal(wait_window).dividedBy((new Decimal(config.RING_SLICES)).dividedBy(new Decimal(2)));
     let base_wait = slice_wait.times(new Decimal(slice));
-    let final_wait = base_wait.plus((new Decimal(Math.random())).times(new Decimal(config.PARTICLE_WAIT_VARIATION)));
+    let final_wait = base_wait.plus((new Decimal(better_random())).times(new Decimal(config.PARTICLE_WAIT_VARIATION)));
     p.wait = final_wait.toPrecision(5);
 
     // Generate Seed
-    p.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+    p.seed = Math.max(better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 }
 
 function generate_slice_position_final(slice) {
@@ -705,7 +705,7 @@ function invert_particle_over_x (p) {
     new_particle.alpha = p.alpha;
     new_particle.brightness = p.brightness;
     new_particle.wait = p.wait;
-    new_particle.seed = Math.max(Math.random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+    new_particle.seed = Math.max(better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
     new_particle.ambient = p.ambient;
 
     return new_particle;
