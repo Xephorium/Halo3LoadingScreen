@@ -20,7 +20,7 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1500,                         // Final = 2096
+    RING_SLICES: 1100,                         // Final = 2096
     RING_RADIUS: 3.5,
     AMBIENT_PARTICLES: 1,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
@@ -611,6 +611,7 @@ function generate_particle_position_final_offset(p) {
      *     ------+------
      */
 
+    // Determines Shape of 
     let particle = p % (config.SLICE_PARTICLES / 2);
     let sign = p >= (config.SLICE_PARTICLES / 2) ? -1 : 1;
     let offset = [0.0, 0.0];
