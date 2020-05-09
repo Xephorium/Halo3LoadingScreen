@@ -17,3 +17,14 @@ canvas {
     left:0;
     right:0;
 }
+
+div {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #a1cae6; 
+    font-family: Sans-serif;
+    font-size: 18px;
+    text-align: center;
+}
