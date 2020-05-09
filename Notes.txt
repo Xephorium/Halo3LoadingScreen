@@ -93,7 +93,7 @@ Data Static
 Slice Particle Positions
   After two days and an accidental all-nighter, I've been unable to derive a bug-free
   algorithm that generates final particle positions for each slice given a variable
-  particle count per slice. But even if I had figured it out, the apprach would have
+  particle count per slice. But even if I had figured it out, the approach would have
   had a few drawbacks. For one, it's verbose. My current imperfect implementation comes
   out at ~100 lines of obscure calculations. The algorithm also would have restricted
   slices to a rectangular shape, which is artistically inflexible and doesn't match the
@@ -101,7 +101,7 @@ Slice Particle Positions
   moving forward. Rather than a complex generation system, I'd like to just write a
   method that returns hard coded position offsets for each slice particle. It's not
   sophisticated. But it is flexible, bug-proof, and can be changed in about 10 minutes
-  with paper and pencil. The change will make for a quick little refactor down the line.
+  with paper and pencil.
 
 Camera Movement Animation
   In previous projects that required smooth position animation, I've spent time deriving
