@@ -20,13 +20,13 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1500,                         // Final = 2096
+    RING_SLICES: 1100,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 10000,
+    AMBIENT_PARTICLES: 5,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
-    SLICE_PARTICLES: 52,                       // Must be even
+    SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
@@ -576,116 +576,82 @@ function generate_slice_position_final(slice) {
 function generate_particle_position_final(base, particle, slice) {
     let angular_factor_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2);
 	let angular_factor_y = Math.sin(2 * Math.PI * (slice / config.RING_SLICES));
-
+    let offset = generate_particle_position_final_offset(particle);
+    
 	let particle_position_final = [];
-	particle_position_final[0] = generate_particle_position_final_horizontal(base[0], particle, angular_factor_x);
-	particle_position_final[1] = generate_particle_position_final_vertical(base[1], particle);
-	particle_position_final[2] = generate_particle_position_final_horizontal(base[2], particle, angular_factor_y);
+	particle_position_final[0] = base[0] + (config.SLICE_SIZE * offset[0] * angular_factor_x);
+	particle_position_final[1] = base[1] + (config.SLICE_SIZE * offset[1]);
+	particle_position_final[2] = base[2] + (config.SLICE_SIZE * offset[0] * angular_factor_y);
 	return particle_position_final;
 }
 
-function generate_particle_position_final_horizontal (base, particle, angle_factor) {
-    if (config.SLICE_WIDTH == 1) {
+function generate_particle_position_final_offset(p) {
+    
+    /* /////////////////////////////
+     * //// Slice Shape Diagram ////
+     * /////////////////////////////
+     * 
+     * Total Particles: 66
+     * Half Particles: 33
+     * 
+     *             7 8 9
+     *             6 . 0
+     *         3 4 5 . 1
+     *         2 . . . 2
+     *     9 0 1 . . . 3
+     *     8 . . . . . 4
+     *     7 . . . . . 5
+     *     6 . . . . . 6
+     *     5 . . . . . 7
+     *     4 . . . . . 8
+     *     3 . . . . . 9
+     *     2 . . . . . 0
+     *     1 . . . . . 1
+     *     0 . . . . . 2
+     *     ------+------
+     */
 
-		// Return Single Column Width
-		return base;
+    let particle = p % (config.SLICE_PARTICLES / 2);
+    let sign = p >= (config.SLICE_PARTICLES / 2) ? -1 : 1;
+    let offset = [0.0, 0.0];
+    switch(particle) {
+    	case  0: offset = [-3,  1]; break;
+    	case  1: offset = [-3,  2]; break;
+    	case  2: offset = [-3,  3]; break;
+    	case  3: offset = [-3,  4]; break;
+    	case  4: offset = [-3,  5]; break;
+    	case  5: offset = [-3,  6]; break;
+    	case  6: offset = [-3,  7]; break;
+    	case  7: offset = [-3,  8]; break;
+    	case  8: offset = [-3,  9]; break;
+    	case  9: offset = [-3, 10]; break;
+    	case 10: offset = [-2, 10]; break;
+    	case 11: offset = [-1, 10]; break;
+    	case 12: offset = [-1, 11]; break;
+    	case 13: offset = [-1, 12]; break;
+    	case 14: offset = [ 0, 12]; break;
+    	case 15: offset = [ 1, 12]; break;
+    	case 16: offset = [ 1, 13]; break;
+    	case 17: offset = [ 1, 14]; break;
+    	case 18: offset = [ 2, 14]; break;
+    	case 19: offset = [ 3, 14]; break;
+    	case 20: offset = [ 3, 13]; break;
+    	case 21: offset = [ 3, 12]; break;
+    	case 22: offset = [ 3, 11]; break;
+    	case 23: offset = [ 3, 10]; break;
+    	case 24: offset = [ 3,  9]; break;
+    	case 25: offset = [ 3,  8]; break;
+    	case 26: offset = [ 3,  7]; break;
+    	case 27: offset = [ 3,  6]; break;
+    	case 28: offset = [ 3,  5]; break;
+    	case 29: offset = [ 3,  4]; break;
+    	case 30: offset = [ 3,  3]; break;
+    	case 31: offset = [ 3,  2]; break;
+    	case 32: offset = [ 3,  1]; break;
+    	default: break;
+    }
 
-	} else if (config.SLICE_WIDTH == 2) {
-
-		// Calculate Double Column Width
-		let width = 0.5;
-		if (particle >= config.SLICE_PARTICLES / 2) {
-			width *= -1;
-		}
-
-		// Return Double Column Width
-		return base + width * config.SLICE_SIZE * angle_factor;
-
-	} else {
-
-		// Calculate Width
-		let mirrored_particle = particle % (config.SLICE_PARTICLES / 2);
-		let width = 0;
-		if (config.SLICE_WIDTH % 2 == 0) {
-
-			// Calculate Even Width
-			let quarter = config.SLICE_PARTICLES / 4;
-			if (config.SLICE_PARTICLES % 4 == 0) quarter -= .5; 
-			let distance = Math.abs(mirrored_particle - quarter);
-			let clamp = Math.abs((config.SLICE_HEIGHT / 2 - 1) - quarter);
-			width = Math.min(distance, clamp);
-
-		} else {
-
-			// Calculate Odd Width
-			let quarter = config.SLICE_PARTICLES / 4;
-			if (config.SLICE_PARTICLES % 4 != 0) quarter -= .5; 
-			let distance = Math.abs(mirrored_particle - quarter);
-			let clamp = Math.abs(((config.SLICE_HEIGHT - 1) / 2) - quarter);
-			width = Math.min(distance, clamp);
-		}
-
-		// Account for Sign
-		if (particle < (config.SLICE_PARTICLES / 4) || particle >= (config.SLICE_PARTICLES / 4) * 3)  {
-			width = Math.abs(width) * -1;
-		} else {
-			width = Math.abs(width);
-		}
-
-		// Return Width
-		return base + width * config.SLICE_SIZE * angle_factor;
-	}
-}
-
-function generate_particle_position_final_vertical (base, particle) {
-    if (config.SLICE_HEIGHT == 1) {
-
-		// Return Single Row Height
-		return 0;
-
-	} else if (config.SLICE_HEIGHT == 2) {
-
-		// Calculate Double Row Height
-		let height = 0.5;
-		if (particle >= config.SLICE_PARTICLES / 2) {
-			height *= -1;
-		}
-
-		// Return Double Row Height
-		return height * config.SLICE_SIZE;
-
-	} else {
-
-		// Calculate Height
-		let mirrored_particle = particle % (config.SLICE_PARTICLES / 2);
-		let height = 0;
-		if (config.SLICE_HEIGHT % 2 == 0) {
-
-			// Calculate Even Height
-			let quarter = config.SLICE_PARTICLES / 4 - 0.5;
-			let distance = Math.abs(mirrored_particle - quarter);
-			let clamp = Math.abs((config.SLICE_HEIGHT / 2 - 1) - quarter);
-			let value = Math.max(distance, clamp) - clamp;
-			height = config.SLICE_HEIGHT / 2 - 1 - value + 0.5;
-
-		} else {
-
-			// Calculate Odd Height
-			let quarter = config.SLICE_PARTICLES / 4;
-			let distance = Math.abs(mirrored_particle - quarter);
-			let clamp = Math.abs(((config.SLICE_HEIGHT - 1) / 2) - quarter);
-			let value = Math.max(distance, clamp) - clamp;
-			height = (config.SLICE_HEIGHT - 1) / 2 - value;
-		}
-
-		// Account for Sign
-		if (particle >= config.SLICE_PARTICLES / 2) {
-			height *= -1;
-		}
-
-		// Return Height
-		return height * config.SLICE_SIZE;
-	}
+	return [-offset[0], (offset[1] - 0.5) * sign];
 }
 
 function initialize_ambient_particle (p) {
