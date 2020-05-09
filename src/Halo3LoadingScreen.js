@@ -21,9 +21,9 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 2000,                         // Final = 2096
+    RING_SLICES: 20,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 50000,
+    AMBIENT_PARTICLES: 1,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -37,7 +37,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.7,                   // Multiplier for camera-position dependent effects
-    ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
+    ENABLE_SLICE_INSPECTION: true,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
@@ -348,7 +348,7 @@ function main () {
         camera_pos[2] = 1;
 
         // Define Slice Inspection View Matrix
-    	g_proj_mat.setPerspective(30, canvas.width/canvas.height, .02, 10000);
+    	g_proj_mat.setPerspective(20, canvas.width/canvas.height, .02, 10000);
     	// LookAt Parameters: camera pos, focus pos, up vector      
         g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -config.RING_RADIUS, 0, 0, 0, 1, 0);
 
@@ -660,7 +660,7 @@ function generate_particle_position_final_offset(p) {
     }
 
     // DIRTY HACK - Remove this line when proper camera animation is complete
-    offset = [offset[0] * 0.55, offset[1]];
+    //offset = [offset[0] * 0.55, offset[1]];
 
 	return [-offset[0], (offset[1] - 0.5) * sign];
 }
