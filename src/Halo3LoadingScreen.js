@@ -281,6 +281,7 @@ let fbo_data_static;       // Unchanging Particle Metadata
 
 let camera_pos = [];
 let random = new MersenneTwister();
+let start_time, time;
 
 
 /*--- Shader Execution Functions ---*/
@@ -322,7 +323,7 @@ class GLProgram {
 
     bind_time() {
     	gl.useProgram(this.program);
-        gl.uniform1f(this.uniforms.time, performance.now());
+        gl.uniform1f(this.uniforms.time, performance.now() - start_time);
     }
 }
 
@@ -440,6 +441,9 @@ function main () {
 	create_fbos(pa);        // initialize fbo data
 	init_buffers(prog_particle); 
 	send_texture_coordinates_to_gpu(pa);
+
+	// Set Time Start
+	start_time = performance.now();
 
     // Define Update Function
 	let update = function() {    
