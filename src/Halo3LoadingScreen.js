@@ -18,6 +18,7 @@ let config = {
 	LENGTH_SLICE_ASSEMBLY: 1500,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
+	LENGTH_CANVAS_FADE: 2000,
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2000,                         // Final = 2096
@@ -234,24 +235,9 @@ const vertex_display = `#version 300 es
 	out vec2 v_coord;
 
 	void main() {	   
-	   gl_PointSize = 1.0;
 	   gl_Position = vec4(a_position, 0.0, 1.0); // 4 corner vertices of quad
 
 	   v_coord = a_position * 0.5 + 0.5; // UV coords: (0, 0), (0, 1), (1, 1), (1, 0)
-	}
-`;
-
-const frag_display = `#version 300 es
-	precision mediump float;
-	precision highp sampler2D;
-
-	uniform sampler2D u_image;
-	in vec2 v_coord;
-
-	out vec4 cg_FragColor; 
-
-	void main() {
-	    cg_FragColor = texture(u_image, v_coord);
 	}
 `;
 
@@ -282,6 +268,7 @@ let fbo_data_static;       // Unchanging Particle Metadata
 let camera_pos = [];
 let random = new MersenneTwister();
 let start_time, time;
+var canvas_opacity = 0;
 
 
 /*--- Shader Execution Functions ---*/
@@ -323,12 +310,8 @@ class GLProgram {
 
     bind_time() {
     	gl.useProgram(this.program);
-        gl.uniform1f(this.uniforms.time, performance.now() - start_time);
+        gl.uniform1f(this.uniforms.time, time);
     }
-}
-
-function $(id) {
-  return document.getElementById(id);
 }
 
 function main () {
@@ -442,12 +425,21 @@ function main () {
 	init_buffers(prog_particle); 
 	send_texture_coordinates_to_gpu(pa);
 
+    
+    /*--- Loading Complete ---*/
+
 	// Set Time Start
 	start_time = performance.now();
 
-    // Define Update Function
-	let update = function() {    
+	// Fade To Canvas
+	fade_to_canvas();
 
+    // Define Update Function
+	let update = function() {
+
+		// Update Time
+		time = performance.now() - start_time;
+		
         // Clear Canvas
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -455,7 +447,7 @@ function main () {
         if (!config.ENABLE_SLICE_INSPECTION) {
 
         	// Update Position
-			let progress = performance.now() % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
+			let progress = time % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
 			camera_pos[0] = 4.25 * Math.sin(Math.PI * progress + 1 - Math.PI / 2);
 			camera_pos[1] = -0.15 * (Math.sin(Math.PI * progress + 1) -1.5);
 			camera_pos[2] = 4.25 * Math.sin(Math.PI * progress + 1);
@@ -476,6 +468,15 @@ function main () {
 		requestAnimationFrame(update);
 	};
 	update();
+}
+
+function fade_to_canvas() {
+   if (canvas_opacity < 1) {
+	  canvas_opacity += 0.1;
+	  setTimeout(function(){fade_to_canvas()}, 1000 / 60);
+	  canvas.style.opacity = canvas_opacity;
+	  document.getElementById("loading").style.opacity = 1 - canvas_opacity;
+   }
 }
 
 function init_buffers (prog) {
