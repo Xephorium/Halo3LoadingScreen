@@ -4,7 +4,7 @@
 //////////////////////////////
 
 
-/*--- Texture Data Organization ---*/
+/*--- Image Data Organization ---*/
 
 Initial Position
   R: x pos
@@ -114,3 +114,44 @@ Camera Movement Animation
   I've gathered in early research:
 
   The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html
+
+
+/*--- WebGL Basics ---*/
+
+I expect to forget 80% of what I learned in my Computer Graphics class. So here's a
+crash course in the core concepts, with a focus on what's needed for this project.
+
+Shaders: WebGL shaders facilitate coding directly to GPU. They're the code blocks at the top
+stored as strings and labeled vertex_* or frag_*. These names represent the two halves of each
+shader. While the purpose of each half can become muddied in practice, the vertex shader is
+generally used to perform operations on vertices and the fragment half determines how the
+faces between vertices will appear. (fragment = face in WebGL.) For more details at Stack
+Overflow: https://stackoverflow.com/questions/4421261/vertex-shader-vs-fragment-shader
+
+Object display: Say we want to display an object in WebGL. One way to approach this is as
+follows. Parse the object data from an .obj file (vertices, UV coordinates, normals, etc.) in
+JavaScript. Prepare transformation matrices to be applied to the object (scale, rotate, invert,
+etc.) in JavaScript. Send object data and transformation matrices to vertex shader, which
+performs transformations on each vertex. Then, in the vertex shader, perform a final transformation
+to determine what the object looks like to the virtual camera. Lots of linear algebra and vector
+math. Send any required data from the vertex shader to the fragment shader, which determines the
+color of each pixel in the resulting image or to display on the screen. Each image we want
+to view or process (including the final image rendered to the screen) must be stored in a Frame
+Buffer Object (FBO), which we can modify using the GPU through shaders.
+
+Hardware: Anything in a shader (precompiled code stored in a variable) runs on the GPU. Anything
+outside a shader (in this case, JavaScript), runs on the CPU. 
+
+Particle Systems: Particle systems in WebGL basically consist of a list of positions, on which
+we can perform operations. The positions are then run through a view matrix transformation to
+determine their position on the screen, and represented by a single point of variable size and
+color.
+
+Particle System Efficiency: Performing operations on each particle position can be done in
+JavaScript and then sent to a shader for their final transformation and rendering. However,
+this has significant performance limitations. Remember that JavaScript uses the CPU. GPU's
+on the other hand were built for massive parallel processing. Therefore, we want to offload
+particle calculations to a shader, where they're *much* faster. We do this by storing all 
+particle information in pixels of an image. Position image: R = x, G = y, B = z, A = whatever.
+Each image can then be stored in a frame buffer object, on which shaders can directly perform
+calculations before display. :)
