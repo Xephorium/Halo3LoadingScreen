@@ -20,9 +20,9 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1100,                         // Final = 2096
+    RING_SLICES: 1000,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 1,
+    AMBIENT_PARTICLES: 5000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -608,10 +608,12 @@ function generate_particle_position_final_offset(p) {
      *     2 . . . . . 0
      *     1 . . . . . 1
      *     0 . . . . . 2
-     *     ------+------
+     *     ------x------
      */
 
-    // Determines Shape of 
+    // Note: Table contains the offset from slice center (x) of
+    //       each particle to produce the slice shape above. Half
+    //       offset is subtracted from vertical positions last.
     let particle = p % (config.SLICE_PARTICLES / 2);
     let sign = p >= (config.SLICE_PARTICLES / 2) ? -1 : 1;
     let offset = [0.0, 0.0];
