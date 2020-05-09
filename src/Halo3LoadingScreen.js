@@ -20,9 +20,9 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1100,                         // Final = 2096
+    RING_SLICES: 1500,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 5,
+    AMBIENT_PARTICLES: 1,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -650,6 +650,9 @@ function generate_particle_position_final_offset(p) {
     	case 32: offset = [ 3,  1]; break;
     	default: break;
     }
+
+    // DIRTY HACK - Remove this line when proper camera animation is complete
+    offset = [offset[0] * 0.55, offset[1]];
 
 	return [-offset[0], (offset[1] - 0.5) * sign];
 }
