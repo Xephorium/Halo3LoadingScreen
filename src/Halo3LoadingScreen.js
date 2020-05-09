@@ -182,8 +182,7 @@ let frag_data = `#version 300 es
 `;
 
 let vertex_particle = `#version 300 es
-  
-	in vec2 a_texcoord; // texcoord associated with this particle
+	in vec2 uv_coord_data;
 
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
@@ -196,10 +195,10 @@ let vertex_particle = `#version 300 es
 	uniform float camera_dist_factor;
 	uniform vec3 position_camera;
 
-	out vec2 v_texcoord;
+	out vec2 uv_coord_data_frag;
 
 	void main() {
-		vec4 pos = texture(u_pos, a_texcoord); // this particle position
+		vec4 pos = texture(u_pos, uv_coord_data); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
 
         // Scale Particles Based on Camera Distance
@@ -211,20 +210,21 @@ let vertex_particle = `#version 300 es
         	gl_PointSize = particle_size;
         }
 
-        v_texcoord = a_texcoord; // send texcoord to frag shader
+        // Send UV Coordinates to Fragment Shader
+        uv_coord_data_frag = uv_coord_data;
     }
 `;
 
 let frag_particle = `#version 300 es
 	precision mediump float;
 
-    in vec2 v_texcoord; // texcoord associated with this particle
+    in vec2 uv_coord_data_frag;
     uniform sampler2D texture_data_dynamic;
 
 	out vec4 cg_FragColor; 
 
 	void main() {
-		float alpha = texture(texture_data_dynamic, v_texcoord).r;
+		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		cg_FragColor = vec4(0.51, 0.8, 1.0, alpha);
 	}
 `;
@@ -252,7 +252,7 @@ let g_view_mat = new Matrix4();
 
 let vao_image; // vao for drawing image (using 2 triangles)
 
-let g_texcoord_buffer; // texcoord associated with each particle
+let uv_coord_data_buffer;  // Contains UV coordinates for each pixel in particle data textures
 
 let prog_particle;         // Particle Renderer
 let prog_display;          // FBO Renderer
@@ -422,8 +422,8 @@ function main () {
     // Setup Frame Buffer Objects
 	cg_init_framebuffers(); // create fbos 
 	create_fbos(pa);        // initialize fbo data
-	init_buffers(prog_particle); 
-	send_texture_coordinates_to_gpu(pa);
+	initialize_buffers(prog_particle); 
+	generate_buffer_data(pa);
 
     
     /*--- Loading Complete ---*/
@@ -479,48 +479,51 @@ function fade_to_canvas() {
    }
 }
 
-function init_buffers (prog) {
+function initialize_buffers (prog) {
 
-    // no need to create vertex buffer because
-    // we are getting that info from texture map
-    // but we still need texcoord buffer because
-    // it records how to map particle index to texcoord
-  	g_texcoord_buffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, g_texcoord_buffer);
-	gl.vertexAttribPointer(prog.attributes.a_texcoord, 2, gl.FLOAT, false, 0, 0);
-	gl.enableVertexAttribArray(prog.attributes.a_texcoord);
+    // Initialize Particle Data Buffer
+  	uv_coord_data_buffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, uv_coord_data_buffer);
+	gl.vertexAttribPointer(prog.attributes.uv_coord_data, 2, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(prog.attributes.uv_coord_data);
 
 }
 
-function send_texture_coordinates_to_gpu (pa) {
-    
-    // Note: Calculations involving tiny decimals require special care
-    //       because JavaScript's math is broken. In this case, operations
-    //       on a decimal representing the width of a single pixel intermittently
-    //       produce the wrong result due to floating point errors. To work
-    //       around the issue, this block uses the arbitrary-precision decimal
-    //       library decimal.js.
-    // Source: https://github.com/MikeMcl/decimal.js/
+// Note: Calculations involving tiny decimals require special care
+//       because JavaScript's math is broken. In this case, operations
+//       on decimals representing the width of single pixels intermittently
+//       produce the wrong result due to floating point errors. To work
+//       around the issue, this method uses the arbitrary-precision decimal
+//       library decimal.js.
+// Source: https://github.com/MikeMcl/decimal.js/
+function generate_buffer_data(pa) {
+
+
+    /*-- Particle Data Buffer --*/
+
+    // Note: This block calculates the UV coordinates for each pixel of the images
+    //       representing a particle's data (initial pos, final pos, pos, etc). Values
+    //       are in range [0, 1]. The coordinates are sent to the vertex_particle shader
+    //       as uv_coord_data.
 
     // Declare Variables
-    let coords = [];
+    let uv_coord_data = [];
     let pixel_size = (new Decimal(1.0)).dividedBy(new Decimal(config.TEXTURE_SIZE)); // 1 / TEXTURE_SIZE
     let half_pixel_size = pixel_size.dividedBy(new Decimal(2)); // pixel_size / 2
 
-    // Generate Texture Coordinates [0, 1] for Each Pixel
+    // Generate Texture Coordinates for Each Pixel
     for (let x = 0; x < config.TEXTURE_SIZE; x++) {
     	for (let y = 0; y < config.TEXTURE_SIZE; y++) {
     		let coord_x = pixel_size.times(new Decimal(x).plus(half_pixel_size)).toPrecision(10);
     		let coord_y = pixel_size.times(new Decimal(y).plus(half_pixel_size)).toPrecision(10);
-		    coords.push(coord_x);
-		    coords.push(coord_y);
+		    uv_coord_data.push(coord_x);
+		    uv_coord_data.push(coord_y);
     	}
     }
 
-    // Send Texture Coordinates to GPU
-	let texcoords = new Float32Array(coords); 
-	gl.bindBuffer(gl.ARRAY_BUFFER, g_texcoord_buffer);    
-	gl.bufferData(gl.ARRAY_BUFFER, texcoords, gl.STATIC_DRAW);
+    // Send UV Coordinates to GPU
+	gl.bindBuffer(gl.ARRAY_BUFFER, uv_coord_data_buffer);    
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv_coord_data), gl.STATIC_DRAW);
 }
 
 
