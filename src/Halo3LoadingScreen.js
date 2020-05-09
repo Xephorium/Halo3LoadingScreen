@@ -20,9 +20,9 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1000,                         // Final = 2096
+    RING_SLICES: 2000,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 5000,
+    AMBIENT_PARTICLES: 10000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -505,8 +505,8 @@ function send_texture_coordinates_to_gpu (pa) {
     // Generate Texture Coordinates [0, 1] for Each Pixel
     for (let x = 0; x < config.TEXTURE_SIZE; x++) {
     	for (let y = 0; y < config.TEXTURE_SIZE; y++) {
-    		let coord_x = pixel_size.times(new Decimal(x).plus(half_pixel_size)).toPrecision(5);
-    		let coord_y = pixel_size.times(new Decimal(y).plus(half_pixel_size)).toPrecision(5);
+    		let coord_x = pixel_size.times(new Decimal(x).plus(half_pixel_size)).toPrecision(10);
+    		let coord_y = pixel_size.times(new Decimal(y).plus(half_pixel_size)).toPrecision(10);
 		    coords.push(coord_x);
 		    coords.push(coord_y);
     	}
