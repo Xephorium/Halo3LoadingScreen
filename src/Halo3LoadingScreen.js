@@ -22,7 +22,7 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2000,                         // Final = 2096
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 10000,
+    AMBIENT_PARTICLES: 50000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
