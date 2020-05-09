@@ -4,6 +4,16 @@
 //////////////////////////////
 
 
+/*--- Remaining Tasks ---*/
+
+1. Match camera movement
+  > Splines!
+2. Texture particles
+3. Cubes
+?. Lines
+?. Background
+
+
 /*--- Image Data Organization ---*/
 
 Initial Position
