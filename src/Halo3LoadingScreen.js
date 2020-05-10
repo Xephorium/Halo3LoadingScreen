@@ -25,7 +25,7 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 10000,
+    AMBIENT_PARTICLES: 2500,
     AMBIENT_WIDTH: 4,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -38,7 +38,7 @@ let config = {
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
+    CAMERA_DIST_FACTOR: 1.65,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -268,7 +268,7 @@ let vertex_particle = `#version 300 es
         }
 
         if (ambient == 1.0) {
-        	gl_PointSize += gl_PointSize * 0.5;
+        	gl_PointSize += gl_PointSize * 0.7;
         }
 
         // Send UV Coordinates to Fragment Shader
