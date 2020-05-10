@@ -389,7 +389,7 @@ function main () {
 		initialize_ambient_particle(pa[x]);
 	}
 
-    // Create Buffers (Define Input Coordinates to Shaders)
+    // Create Buffers (Define Input Coordinates for Shaders)
    	create_vertex_buffer();
    	initialize_buffers(prog_particle); 
 	populate_buffers(pa);
