@@ -23,9 +23,9 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 20,                           // Final = 2096
+    RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 1,
+    AMBIENT_PARTICLES: 50000,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
@@ -39,7 +39,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.7,                   // Multiplier for camera-position dependent effects
-    ENABLE_SLICE_INSPECTION: true,            // Places camera statically perpindicular to first slice
+    ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
@@ -146,6 +146,8 @@ let frag_position = `#version 300 es
 	}
 
 	void main() {
+
+		// Local Variables
 		vec4 initial_position = texture(texture_initial_position, v_coord);
 		vec4 final_position = texture(texture_final_position, v_coord);
 		vec4 current_position = texture(texture_position, v_coord);
@@ -170,7 +172,10 @@ let frag_position = `#version 300 es
 			vec4 position = interpolate_location(initial_position, detour_position, final_position, factor);
 
 			cg_FragColor = position;
+        
+        } else {
 
+        	cg_FragColor = current_position;
         }
 	}
 `;
@@ -178,6 +183,7 @@ let frag_position = `#version 300 es
 let frag_data = `#version 300 es
 	precision mediump float;
 
+    // Input Variables
     uniform sampler2D texture_position;
 	uniform sampler2D texture_data_dynamic;
 	uniform sampler2D texture_data_static;
@@ -192,13 +198,12 @@ let frag_data = `#version 300 es
 	uniform float alpha_fade;
 	in vec2 v_coord;
 
+    // Output Variables
 	out vec4 cg_FragColor; 
 
-	float random(vec2 p) {
-    	return fract(sin(dot(p.xy, vec2(12.9898,78.233))) * 43758.5453123);
-	}
-
 	void main() {
+
+		// Local Variables
 		vec4 position = texture(texture_position, v_coord);
 		float alpha = texture(texture_data_dynamic, v_coord).r;
 		float brightness = texture(texture_data_dynamic, v_coord).g;
@@ -228,8 +233,9 @@ let frag_data = `#version 300 es
 `;
 
 let vertex_particle = `#version 300 es
-	in vec2 uv_coord_data;
 
+    // Input Variables
+    in vec2 uv_coord_data;
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
@@ -241,9 +247,12 @@ let vertex_particle = `#version 300 es
 	uniform float camera_dist_factor;
 	uniform vec3 position_camera;
 
+    // Output Variables
 	out vec2 uv_coord_data_frag;
 
 	void main() {
+
+		// Local Variables
 		vec4 pos = texture(u_pos, uv_coord_data); // this particle position
 		gl_Position = u_proj_mat * u_view_mat * pos;
 
@@ -266,7 +275,6 @@ let frag_particle = `#version 300 es
 
     in vec2 uv_coord_data_frag;
     uniform sampler2D texture_data_dynamic;
-
 	out vec4 cg_FragColor; 
 
 	void main() {
