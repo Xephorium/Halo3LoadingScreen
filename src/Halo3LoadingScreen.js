@@ -221,8 +221,8 @@ let frag_data = `#version 300 es
         }
 
         // Adjust Alpha for Camera Clipping
-        float camera_distance_min = 0.15;
- 		float camera_distance_min_fade = .7;
+        float camera_distance_min = 0.07;
+ 		float camera_distance_min_fade = .5;
  		float factor = (distance - camera_distance_min) / (camera_distance_min_fade - camera_distance_min);
  		factor = min(max(factor, 0.0), 1.0);
         alpha_scale *= factor;
@@ -767,6 +767,8 @@ function Particle () {
 }
 
 function initialize_active_particle (p, slice, particle) {
+	let angular_factor_x = Math.sin(2 * Math.PI * (slice / config.RING_SLICES) - Math.PI / 2);
+	let angular_factor_y = Math.sin(2 * Math.PI * (slice / config.RING_SLICES));
 
     // Generate Final Position
 	let slice_position_final = generate_slice_position_final(slice);
@@ -776,9 +778,9 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + better_random() * 1.5;
-	p.position_initial[1] = p.position_final[1] + better_random() * .2;
-	p.position_initial[2] = p.position_final[2] + better_random() * 1.5;
+	p.position_initial[0] = p.position_final[0] + better_random() * 1.2 * angular_factor_x;
+	p.position_initial[1] = p.position_final[1] + better_random() * .5;
+	p.position_initial[2] = p.position_final[2] + better_random() * 1.2 * angular_factor_y;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
