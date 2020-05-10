@@ -2,11 +2,13 @@
  *  Christopher Cruzen
  *  05.03.2020
  *
- *  This program is a heavily modified version of a GPU-based particle shader
+ *  A WebGL recreation of Halo 3's Loading Screen.
+ *  
+ *  This program was built atop a simple GPU-based particle shader program
  *  provided by Dr. Henry Kang in UMSL's Topics in Computer Graphics course.
- *
  *  We stand on the shoulders of giants.
  */ 
+
 
 
 /*--- Global Configuration ---*/
@@ -21,7 +23,7 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 20,                         // Final = 2096
+    RING_SLICES: 20,                           // Final = 2096
     RING_RADIUS: 3.5,
     AMBIENT_PARTICLES: 1,
     AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
@@ -41,6 +43,8 @@ let config = {
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
+
+// Generated Global Initialization
 config.PARTICLE_SIZE = config.PARTICLE_SIZE * config.RESOLUTION_SCALE;
 config.TEXTURE_SIZE = Math.ceil(Math.sqrt(config.RING_SLICES * config.SLICE_PARTICLES + config.AMBIENT_PARTICLES));
 if (config.SLICE_WIDTH == config.SLICE_PARTICLES) config.SLICE_HEIGHT = 1;
@@ -48,7 +52,49 @@ else if (config.SLICE_WIDTH == config.SLICE_PARTICLES / 2) config.SLICE_HEIGHT =
 else config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) + 2;
 
 
-/*--- Shader Declarations ---*/
+
+/*--- Variable Declarations ---*/
+
+let gl, canvas;
+let g_proj_mat = new Matrix4();
+let g_light_dir = new Vector3([0, 0.4, 0.6]);
+let g_model_mat = new Matrix4();
+let g_view_mat = new Matrix4();
+
+let vao_image;             // vao for drawing image (using 2 triangles)
+
+let uv_coord_data_buffer;  // Contains UV coordinates for each pixel in particle data textures
+
+let prog_particle;         // Particle Renderer
+let prog_display;          // FBO Renderer
+let prog_position;         // Particle Position Updater
+let prog_data;             // Particle Data Updater
+
+let fbo_pos_initial;       // Particle Initial Position
+let fbo_pos_final;         // Particle Final Position
+let fbo_pos;               // Particle Position
+let fbo_data_dynamic;      // Changing Particle Metadata
+let fbo_data_static;       // Unchanging Particle Metadata
+
+let camera_pos = [];
+let random = new MersenneTwister();
+let start_time, time;
+var canvas_opacity = 0;
+
+
+
+/*--- Shader Definitions ---*/
+
+
+const vertex_display = `#version 300 es
+	in vec2 a_position;	
+	out vec2 v_coord;
+
+	void main() {	   
+	   gl_Position = vec4(a_position, 0.0, 1.0); // 4 corner vertices of quad
+	   v_coord = a_position * 0.5 + 0.5; // UV coords: (0, 0), (0, 1), (1, 1), (1, 0)
+	}
+`;
 
 let frag_position = `#version 300 es
 	precision highp float;
@@ -229,92 +275,11 @@ let frag_particle = `#version 300 es
 	}
 `;
 
-const vertex_display = `#version 300 es
-	in vec2 a_position;	
-	
-	out vec2 v_coord;
-
-	void main() {	   
-	   gl_Position = vec4(a_position, 0.0, 1.0); // 4 corner vertices of quad
-
-	   v_coord = a_position * 0.5 + 0.5; // UV coords: (0, 0), (0, 1), (1, 1), (1, 0)
-	}
-`;
-
-
-/*--- Variable Declarations ---*/
-
-let gl, canvas;
-let g_proj_mat = new Matrix4();
-let g_light_dir = new Vector3([0, 0.4, 0.6]);
-let g_model_mat = new Matrix4();
-let g_view_mat = new Matrix4();
-
-let vao_image; // vao for drawing image (using 2 triangles)
-
-let uv_coord_data_buffer;  // Contains UV coordinates for each pixel in particle data textures
-
-let prog_particle;         // Particle Renderer
-let prog_display;          // FBO Renderer
-let prog_position;         // Particle Position Updater
-let prog_data;             // Particle Data Updater
-
-let fbo_pos_initial;       // Particle Initial Position
-let fbo_pos_final;         // Particle Final Position
-let fbo_pos;               // Particle Position
-let fbo_data_dynamic;      // Changing Particle Metadata
-let fbo_data_static;       // Unchanging Particle Metadata
-
-let camera_pos = [];
-let random = new MersenneTwister();
-let start_time, time;
-var canvas_opacity = 0;
-
-
-/*--- Shader Execution Functions ---*/
-
-function cg_init_shaders(gl, vshader, fshader) {
-	var program = createProgram(gl, vshader, fshader); // defined in cuon-utils.js
-
-	return program;
-}
-
-class GLProgram {
-    constructor (vertex_shader, frag_shader) {
-        this.attributes = {};
-        this.uniforms = {};
-
-        this.program = cg_init_shaders(gl, vertex_shader, frag_shader);
-
-        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS))
-            throw gl.getProgramInfoLog(this.program);
-        
-        // register attribute variables
-        const attribute_count = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
-        for (let i = 0; i < attribute_count; i++) {
-            const attribute_name = gl.getActiveAttrib(this.program, i).name;
-            this.attributes[attribute_name] = gl.getAttribLocation(this.program, attribute_name);
-        }
-
-        // register uniform variables
-        const uniform_count = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
-        for (let i = 0; i < uniform_count; i++) {
-            const uniform_name = gl.getActiveUniform(this.program, i).name;
-            this.uniforms[uniform_name] = gl.getUniformLocation(this.program, uniform_name);
-        }
-    }
-
-    bind () {
-        gl.useProgram(this.program);
-    }
-
-    bind_time() {
-    	gl.useProgram(this.program);
-        gl.uniform1f(this.uniforms.time, time);
-    }
-}
+/*--- Main Program ---*/
 
 function main () {
+
+    /* Render Preparation */
 
 	// Retrieve Canvas
 	canvas = document.getElementById('canvas');
@@ -374,7 +339,7 @@ function main () {
     gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
     gl.uniform1f(prog_particle.uniforms.particle_size_clamp, config.PARTICLE_SIZE_CLAMP ? 1 : 0);
 
-	// Generate Ring Particles
+	// Create Ring Particle Array
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
 	let particle_index = 0;
 
@@ -416,25 +381,33 @@ function main () {
 		initialize_ambient_particle(pa[x]);
 	}
 
-    // Create VAO Image
-   	vao_image_create();
+    // Create Buffers (Define Input Coordinates to Shaders)
+   	create_vertex_buffer();
+   	initialize_buffers(prog_particle); 
+	populate_buffers(pa);
 
-    // Setup Frame Buffer Objects
-	cg_init_framebuffers(); // create fbos 
-	create_fbos(pa);        // initialize fbo data
-	initialize_buffers(prog_particle); 
-	generate_buffer_data(pa);
+    // Set Up Framebuffer Objects (Hold Particle Data Textures)
+	initialize_framebuffer_objects();
+	populate_framebuffer_objects(pa);
 
     
-    /*--- Loading Complete ---*/
+    /*-- Preparation Complete --*/
 
 	// Set Time Start
 	start_time = performance.now();
 
 	// Fade To Canvas
 	fade_to_canvas();
+	function fade_to_canvas() {
+	   if (canvas_opacity < 1) {
+		  canvas_opacity += 0.1;
+		  setTimeout(function(){fade_to_canvas()}, 1000 / 60);
+		  canvas.style.opacity = canvas_opacity;
+		  document.getElementById("loading").style.opacity = 1 - canvas_opacity;
+	   }
+	}
 
-    // Define Update Function
+    // Begin Update Loop
 	let update = function() {
 
 		// Update Time
@@ -461,22 +434,87 @@ function main () {
         }
 
         // Render Scene
-		update_position(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
-		update_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-	    draw_particle(fbo_pos, fbo_data_dynamic, pa); 
+		update_particle_positions(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
+		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
+	    draw_particles(fbo_pos, fbo_data_dynamic, pa);
 
 		requestAnimationFrame(update);
 	};
 	update();
 }
 
-function fade_to_canvas() {
-   if (canvas_opacity < 1) {
-	  canvas_opacity += 0.1;
-	  setTimeout(function(){fade_to_canvas()}, 1000 / 60);
-	  canvas.style.opacity = canvas_opacity;
-	  document.getElementById("loading").style.opacity = 1 - canvas_opacity;
-   }
+
+/*--- Shader Program Class ---*/
+
+class GLProgram {
+    constructor (vertex_shader, fragment_shader) {
+        this.attributes = {};
+        this.uniforms = {};
+
+        // Note: Method defined in cuon-utils.js.
+        this.program = createProgram(gl, vertex_shader, fragment_shader);
+
+        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS))
+            throw gl.getProgramInfoLog(this.program);
+        
+        // Register Attribute Variables
+        const attribute_count = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+        for (let i = 0; i < attribute_count; i++) {
+            const attribute_name = gl.getActiveAttrib(this.program, i).name;
+            this.attributes[attribute_name] = gl.getAttribLocation(this.program, attribute_name);
+        }
+
+        // Register Uniform Variables
+        const uniform_count = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+        for (let i = 0; i < uniform_count; i++) {
+            const uniform_name = gl.getActiveUniform(this.program, i).name;
+            this.uniforms[uniform_name] = gl.getUniformLocation(this.program, uniform_name);
+        }
+    }
+
+    bind () {
+        gl.useProgram(this.program);
+    }
+
+    bind_time() {
+    	gl.useProgram(this.program);
+        gl.uniform1f(this.uniforms.time, time);
+    }
+}
+
+
+/*--- Buffer Setup ---*/
+
+function create_vertex_buffer () {
+
+	// Create Vertex Array Object
+    vao_image = gl.createVertexArray();
+    gl.bindVertexArray(vao_image);
+
+    // Create Vertex Buffer
+    let vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+            -1, -1,
+            -1, 1,
+            1, 1,
+            1, -1
+        ]),
+        gl.STATIC_DRAW
+    );
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_particle.uniforms.a_position);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    let vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    // Note: Six vertices representing two triangles with a shared edge from bottom left to top right 
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
 }
 
 function initialize_buffers (prog) {
@@ -496,7 +534,7 @@ function initialize_buffers (prog) {
 //       around the issue, this method uses the arbitrary-precision decimal
 //       library decimal.js.
 // Source: https://github.com/MikeMcl/decimal.js/
-function generate_buffer_data(pa) {
+function populate_buffers(pa) {
 
 
     /*-- Particle Data Buffer --*/
@@ -524,6 +562,154 @@ function generate_buffer_data(pa) {
     // Send UV Coordinates to GPU
 	gl.bindBuffer(gl.ARRAY_BUFFER, uv_coord_data_buffer);    
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv_coord_data), gl.STATIC_DRAW);
+}
+
+function initialize_framebuffer_objects() {
+
+    // Enables float framebuffer color attachment
+    gl.getExtension('EXT_color_buffer_float');
+
+    fbo_pos_initial = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos_final = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_pos = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_data_dynamic = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+    fbo_data_static = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
+
+}
+
+function populate_framebuffer_objects (pa) {
+
+	// Initialize Texture Arrays
+	let position_initial = [];
+	let position_final = [];
+	let position = [];
+	let data_dynamic = [];
+	let data_static = [];
+
+	for (let i = 0; i < pa.length; i++) {
+
+		// Initial Position
+		position_initial.push(pa[i].position_initial[0]);
+		position_initial.push(pa[i].position_initial[1]);
+		position_initial.push(pa[i].position_initial[2]);
+		position_initial.push(1);
+
+        // Final Position
+		position_final.push(pa[i].position_final[0]);
+		position_final.push(pa[i].position_final[1]);
+		position_final.push(pa[i].position_final[2]);
+		position_final.push(1);
+
+        // Current Position
+		position.push(pa[i].position[0]);
+		position.push(pa[i].position[1]);
+		position.push(pa[i].position[2]);
+		position.push(1);
+
+        // Changing Particle Data
+		data_dynamic.push(pa[i].alpha);
+		data_dynamic.push(pa[i].brightness);
+		data_dynamic.push(1);
+		data_dynamic.push(1);
+
+		// Unchanging Particle Data
+		data_static.push(pa[i].wait);
+		data_static.push(pa[i].seed);
+		data_static.push(pa[i].ambient);
+		data_static.push(1);
+
+	}
+    
+    // Add Textures to Framebuffer Objects
+	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
+	fbo_pos_final.read.addTexture(new Float32Array(position_final));
+	fbo_pos.read.addTexture(new Float32Array(position));
+	fbo_data_dynamic.read.addTexture(new Float32Array(data_dynamic));
+	fbo_data_static.read.addTexture(new Float32Array(data_static));
+}
+
+function create_framebuffer_object (w, h, internalFormat, format, type, param) {
+    gl.activeTexture(gl.TEXTURE0);
+    
+    let texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+    // create texture image of resolution (w x h)
+    // note that here we pass null as texture source data (no texture image source)
+    // For this texture, we're only allocating memory and not actually filling it.
+    // Filling texture will happen as soon as we render to the framebuffer.    
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+
+    let fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    // attach texture to framebuffer so from now on, everything will be 
+    // drawn on this texture image    
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); 
+    // back to system framebuffer
+	
+    let texel_x = 1.0 / w;
+    let texel_y = 1.0 / h;
+
+    return {
+        texture,
+        fbo,
+        single: true,
+        width: w,
+        height: h,
+        texel_x,
+        texel_y,
+        internalFormat,
+        format,
+        type,
+        attach(id) {
+            gl.activeTexture(gl.TEXTURE0 + id);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            return id;
+        },
+        addTexture(pixel) {
+			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);// do not flip the image's y-axis
+			gl.bindTexture(gl.TEXTURE_2D, texture); // bind TEXTURE_2D to this FBO's texture 
+			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, gl.FLOAT, pixel);
+        }
+    };
+}
+
+function create_double_framebuffer_object (w, h, internalFormat, format, type, param, depth) {
+    let fbo1 = create_framebuffer_object(w, h, internalFormat, format, type, param, depth);
+    let fbo2 = create_framebuffer_object(w, h, internalFormat, format, type, param, depth);
+
+    let texel_x = 1.0 / w;
+    let texel_y = 1.0 / h;
+
+    return {
+        width: w,
+        height: h,
+        single: false,
+        texel_x,
+        texel_y,
+        get read() {
+            return fbo1;
+        },
+        set read(value) {
+            fbo1 = value;
+        },
+        get write() {
+            return fbo2;
+        },
+        set write(value) {
+            fbo2 = value;
+        },
+        swap() {
+            let temp = fbo1;
+            fbo1 = fbo2;
+            fbo2 = temp;
+        }
+    }
 }
 
 
@@ -719,184 +905,19 @@ function invert_particle_over_x (p) {
     return new_particle;
 }
 
-function better_random() {
-	return random.random() * 2 - 1;
-}
 
+/*--- Draw Methods ---*/
 
-/*--- Frame Buffer Object Generation ---*/
-
-function create_fbos (pa) {
-
-	let position_initial = [];
-	let position_final = [];
-	let position = [];
-	let data_dynamic = [];
-	let data_static = [];
-
-	for (let i = 0; i < pa.length; i++) {
-
-		// Initial Position
-		position_initial.push(pa[i].position_initial[0]);
-		position_initial.push(pa[i].position_initial[1]);
-		position_initial.push(pa[i].position_initial[2]);
-		position_initial.push(1);
-
-        // Final Position
-		position_final.push(pa[i].position_final[0]);
-		position_final.push(pa[i].position_final[1]);
-		position_final.push(pa[i].position_final[2]);
-		position_final.push(1);
-
-        // Current Position
-		position.push(pa[i].position[0]);
-		position.push(pa[i].position[1]);
-		position.push(pa[i].position[2]);
-		position.push(1);
-
-        // Changing Particle Data
-		data_dynamic.push(pa[i].alpha);
-		data_dynamic.push(pa[i].brightness);
-		data_dynamic.push(1);
-		data_dynamic.push(1);
-
-		// Unchanging Particle Data
-		data_static.push(pa[i].wait);
-		data_static.push(pa[i].seed);
-		data_static.push(pa[i].ambient);
-		data_static.push(1);
-
-	}
-    
-    // add texture image to fbo
-	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
-	fbo_pos_final.read.addTexture(new Float32Array(position_final));
-	fbo_pos.read.addTexture(new Float32Array(position));
-	fbo_data_dynamic.read.addTexture(new Float32Array(data_dynamic));
-	fbo_data_static.read.addTexture(new Float32Array(data_static));
-}
-
-// When attaching a texture to a framebuffer, all rendering commands will 
-// write to the texture as if it was a normal color/depth or stencil buffer.
-// The advantage of using textures is that the result of all rendering operations
-// will be stored as a texture image that we can then easily used in shaders
-function create_fbo (w, h, internalFormat, format, type, param) {
-
-    gl.activeTexture(gl.TEXTURE0);
-    
-    let texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, param);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, param);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-    // create texture image of resolution (w x h)
-    // note that here we pass null as texture source data (no texture image source)
-    // For this texture, we're only allocating memory and not actually filling it.
-    // Filling texture will happen as soon as we render to the framebuffer.    
-    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
-
-    let fbo = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    // attach texture to framebuffer so from now on, everything will be 
-    // drawn on this texture image    
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-    
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null); 
-    // back to system framebuffer
-	
-    let texel_x = 1.0 / w;
-    let texel_y = 1.0 / h;
-
-    return {
-        texture,
-        fbo,
-        single: true, // single fbo
-        width: w,
-        height: h,
-        texel_x,
-        texel_y,
-        internalFormat,
-        format,
-        type,
-        attach(id) {
-            gl.activeTexture(gl.TEXTURE0 + id);
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            return id;
-        },
-        addTexture(pixel) {
-			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);// do not flip the image's y-axis
-			gl.bindTexture(gl.TEXTURE_2D, texture); // bind TEXTURE_2D to this FBO's texture 
-			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, gl.FLOAT, pixel);
-        }
-    };
-}
-
-// create 2 FBOs so one pixel processing can be done in-place
-function create_double_fbo (w, h, internalFormat, format, type, param, depth) {
-    let fbo1 = create_fbo(w, h, internalFormat, format, type, param, depth);
-    let fbo2 = create_fbo(w, h, internalFormat, format, type, param, depth);
-
-    let texel_x = 1.0 / w;
-    let texel_y = 1.0 / h;
-
-    return {
-        width: w,
-        height: h,
-        single: false, // double fbo
-        texel_x,
-        texel_y,
-        get read() {
-            // getter for fbo1
-            return fbo1;
-        },
-        set read(value) {
-            fbo1 = value;
-        },
-        get write() {
-            // getter for fbo2
-            return fbo2;
-        },
-        set write(value) {
-            fbo2 = value;
-        },
-        swap() {
-            let temp = fbo1;
-            fbo1 = fbo2;
-            fbo2 = temp;
-        }
-    }
-}
-
-function cg_init_framebuffers() {
-
-    gl.getExtension('EXT_color_buffer_float');
-    // enables float framebuffer color attachment
-
-    fbo_pos_initial = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_pos_final = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_pos = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_data_dynamic = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-    fbo_data_static = create_double_fbo(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST);
-
-}
-
-function update_position (position_initial, position_final, position, data_static) {
+function update_particle_positions (position_initial, position_final, position, data_static) {
     let program = prog_position;
-    program.bind_time();
+    program.bind();
 
-    if (position_initial.single) gl.uniform1i(program.uniforms.texture_initial_position, position_initial.attach(1));
-    else gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
+    gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
+    gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(2));
+    gl.uniform1i(program.uniforms.texture_position, position.read.attach(3));
+    gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(4));
 
-    if (position_final.single) gl.uniform1i(program.uniforms.texture_final_position, position_final.attach(2));
-    else gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(2));
-
-    if (position.single) gl.uniform1i(program.uniforms.texture_position, position.attach(3));
-    else gl.uniform1i(program.uniforms.texture_position, position.read.attach(3));
-
-    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(4));
-    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(4));
-
+    gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
@@ -906,27 +927,20 @@ function update_position (position_initial, position_final, position, data_stati
 
     gl.viewport(0, 0, position.width, position.height);
  
-    if (position.single) draw_vao_image(position.fbo);
-    else {
-        draw_vao_image(position.write.fbo);
-        position.swap();
-    }  
+    draw_to_framebuffer_object(position.write.fbo);
+    position.swap();
 }
 
-function update_data (position, data_dynamic, data_static) {
+function update_particle_data (position, data_dynamic, data_static) {
     let program = prog_data;
-    program.bind_time();
+    program.bind();
 
-    if (position.single) gl.uniform1i(program.uniforms.texture_position, position.attach(1));
-    else gl.uniform1i(program.uniforms.texture_position, position.read.attach(1));
-
-    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(2));
-    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
-
-    if (data_static.single) gl.uniform1i(program.uniforms.texture_data_static, data_static.attach(3));
-    else gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
+    gl.uniform1i(program.uniforms.texture_position, position.read.attach(1));
+    gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
+    gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
 
     gl.uniform3fv(program.uniforms.position_camera, camera_pos);
+    gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
@@ -937,60 +951,38 @@ function update_data (position, data_dynamic, data_static) {
 
     gl.viewport(0, 0, data_dynamic.width, data_dynamic.height);
  
-    if (data_dynamic.single) draw_vao_image(data_dynamic.fbo);
-    else {
-        draw_vao_image(data_dynamic.write.fbo);
-        data_dynamic.swap();
-    }  
+    draw_to_framebuffer_object(data_dynamic.write.fbo);
+    data_dynamic.swap(); 
 }
 
-function draw_particle (position, data_dynamic, pa) {
+function draw_to_framebuffer_object (fbo) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  	gl.bindVertexArray(vao_image);
+    
+    // Draw Trangles Using 6 Vertices
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+    // Unbind
+    gl.bindVertexArray(null);
+}
+
+function draw_particles (position, data_dynamic, pa) {
     let program = prog_particle;
     program.bind();
 
-    if (position.single) gl.uniform1i(program.uniforms.u_pos, position.attach(1));
-    else gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
-    
-    if (data_dynamic.single) gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.attach(2));
-    else gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
+    gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
+    gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 	gl.viewport(0, 0, canvas.width, canvas.height);
 
-	gl.drawArrays(gl.POINTS, 0, pa.length); // draw points
+	gl.drawArrays(gl.POINTS, 0, pa.length);
 }
 
-function draw_vao_image (fbo) {
-    // bind destination fbo to gl.FRAMEBUFFER
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-    // start recording bindBuffer or vertexAttribPointer
-  	gl.bindVertexArray(vao_image);
-    
-    // draw trangles using 6 indices
-    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+/*--- Utility Methods ---*/
 
-    gl.bindVertexArray(null); // unbind
-}
-
-function vao_image_create () {
-	// create vao for 2 triangles 
-    vao_image = gl.createVertexArray();
-    // start recording bindBuffer or vertexAttribPointer
-  	gl.bindVertexArray(vao_image);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    // we have 4 vertices, forming a 2x2 square
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(0);
-    // 0 is a reference to attribute variable 'a_position' in shader
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
-    // note that we have 6 indices in total (3 for each triangle, or half of square)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
-    // 2 means (x, y)
-    
-    gl.bindVertexArray(null); // stop recording
+function better_random() {
+	return random.random() * 2 - 1;
 }

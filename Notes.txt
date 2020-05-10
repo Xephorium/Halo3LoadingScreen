@@ -131,6 +131,7 @@ Camera Movement Animation
 Resources
   Attributes: https://webglfundamentals.org/webgl/lessons/webgl-attributes.html
   Buffers & Attributes: https://webglfundamentals.org/webgl/lessons/webgl-how-it-works.html
+  Buffers vs Framebuffers: https://stackoverflow.com/a/13443183
 
 Factoids
   gl.enableVertexAttribArray(x); // Here, x is the index of the shader attribute to recieve
