@@ -25,8 +25,8 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 2500,
-    AMBIENT_WIDTH: 4,                          // Horizontal area in which ambient particles are rendered
+    AMBIENT_PARTICLES: 6000,
+    AMBIENT_WIDTH: 4.5,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
@@ -220,6 +220,13 @@ let frag_data = `#version 300 es
             alpha_scale = 1.0 - ((distance * camera_dist_factor) / camera_dist_max);
         }
 
+        // Adjust Alpha for Camera Clipping
+        float camera_distance_min = 0.15;
+ 		float camera_distance_min_fade = .7;
+ 		float factor = (distance - camera_distance_min) / (camera_distance_min_fade - camera_distance_min);
+ 		factor = min(max(factor, 0.0), 1.0);
+        alpha_scale *= factor;
+
         // Calculate & Set Alpha
         alpha = 0.0;
 		if (delay_time > length_loop - length_scene_fade) {
@@ -267,8 +274,10 @@ let vertex_particle = `#version 300 es
         	gl_PointSize = particle_size;
         }
 
+        // Scale Up Ambient Particles
+        float ambient_particle_scale = 2.5;
         if (ambient == 1.0) {
-        	gl_PointSize += gl_PointSize * 0.7;
+        	gl_PointSize += gl_PointSize * ambient_particle_scale;
         }
 
         // Send UV Coordinates to Fragment Shader
@@ -298,7 +307,7 @@ let frag_particle = `#version 300 es
 		if (ambient == 1.0) {
 			vec2 location = (gl_PointCoord - 0.5) * 2.0;
 			float distance = (1.0 - sqrt(location.x * location.x + location.y * location.y));
-			cg_FragColor = vec4(color.x, color.y, color.z, alpha * distance);	
+			cg_FragColor = vec4(color.x, color.y, color.z, alpha * (distance / 3.5));
 		} else {
 			cg_FragColor = vec4(color.x, color.y, color.z, alpha);
 		}
