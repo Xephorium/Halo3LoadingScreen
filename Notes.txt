@@ -126,6 +126,17 @@ Camera Movement Animation
   The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html
 
 
+/*--- Resources & Factoids ---*/
+
+Resources
+  Attributes: https://webglfundamentals.org/webgl/lessons/webgl-attributes.html
+  Buffers & Attributes: https://webglfundamentals.org/webgl/lessons/webgl-how-it-works.html
+
+Factoids
+  gl.enableVertexAttribArray(x); // Here, x is the index of the shader attribute to recieve
+                                 // vertex info.
+
+
 /*--- WebGL Basics ---*/
 
 I expect to forget 80% of what I learned in my Computer Graphics class. So here's a
