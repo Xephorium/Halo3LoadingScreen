@@ -25,20 +25,20 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 50000,
-    AMBIENT_WIDTH: 7,                          // Horizontal area in which ambient particles are rendered
-    AMBIENT_HEIGHT: 3.5,                       // Vertical area in which ambient particles are rendered
+    AMBIENT_PARTICLES: 10000,
+    AMBIENT_WIDTH: 4,                          // Horizontal area in which ambient particles are rendered
+    AMBIENT_HEIGHT: 2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 2.5,
+    PARTICLE_SIZE: 2.4,
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.7,                   // Multiplier for camera-position dependent effects
+    CAMERA_DIST_FACTOR: 1.75,                   // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -90,9 +90,9 @@ const vertex_display = `#version 300 es
 	in vec2 a_position;	
 	out vec2 v_coord;
 
-	void main() {	   
-	   gl_Position = vec4(a_position, 0.0, 1.0); // 4 corner vertices of quad
-	   v_coord = a_position * 0.5 + 0.5; // UV coords: (0, 0), (0, 1), (1, 1), (1, 0)
+	void main() {
+		gl_Position = vec4(a_position, 0.0, 1.0); // 4 corner vertices of quad
+		v_coord = a_position * 0.5 + 0.5; // UV coords: (0, 0), (0, 1), (1, 1), (1, 0)
 	}
 `;
 
@@ -239,7 +239,8 @@ let vertex_particle = `#version 300 es
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
-	uniform sampler2D u_pos; // obtain particle position from texture
+	uniform sampler2D u_pos;
+	uniform sampler2D texture_data_static;
 	uniform float particle_size;
 	uniform float particle_scaling;
 	uniform float particle_size_clamp;
@@ -254,6 +255,7 @@ let vertex_particle = `#version 300 es
 
 		// Local Variables
 		vec4 pos = texture(u_pos, uv_coord_data); // this particle position
+		float ambient = texture(texture_data_static, uv_coord_data).b;
 		gl_Position = u_proj_mat * u_view_mat * pos;
 
         // Scale Particles Based on Camera Distance
@@ -265,21 +267,41 @@ let vertex_particle = `#version 300 es
         	gl_PointSize = particle_size;
         }
 
+        if (ambient == 1.0) {
+        	gl_PointSize += gl_PointSize * 0.5;
+        }
+
         // Send UV Coordinates to Fragment Shader
         uv_coord_data_frag = uv_coord_data;
     }
 `;
 
 let frag_particle = `#version 300 es
-	precision mediump float;
+	precision highp float;
 
+    // Input Variables
     in vec2 uv_coord_data_frag;
     uniform sampler2D texture_data_dynamic;
+    uniform sampler2D texture_data_static;
+
+    // Output Variables
 	out vec4 cg_FragColor; 
 
 	void main() {
+
+		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
-		cg_FragColor = vec4(0.51, 0.8, 1.0, alpha);
+		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
+		vec3 color = vec3(0.51, 0.8, 1.0);
+
+        // Calculate Particle Transparency
+		if (ambient == 1.0) {
+			vec2 location = (gl_PointCoord - 0.5) * 2.0;
+			float distance = (1.0 - sqrt(location.x * location.x + location.y * location.y));
+			cg_FragColor = vec4(color.x, color.y, color.z, alpha * distance);	
+		} else {
+			cg_FragColor = vec4(color.x, color.y, color.z, alpha);
+		}
 	}
 `;
 
@@ -338,15 +360,6 @@ function main () {
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, -0.5, 0, 0, 1, 0); // camera pos, focus pos, up vector
     }
 
-    // Send Variables to Particle Program
-	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
-	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
-	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
-    gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
-    gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
-    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
-    gl.uniform1f(prog_particle.uniforms.particle_size_clamp, config.PARTICLE_SIZE_CLAMP ? 1 : 0);
-
 	// Create Ring Particle Array
 	let pa = new Array(config.TEXTURE_SIZE * config.TEXTURE_SIZE);
 	let particle_index = 0;
@@ -398,6 +411,16 @@ function main () {
 	initialize_framebuffer_objects();
 	populate_framebuffer_objects(pa);
 
+	// Send Variables to Particle Program
+	gl.uniformMatrix4fv(prog_particle.uniforms.u_proj_mat, false, g_proj_mat.elements);
+	gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1i(prog_particle.uniforms.u_sampler, 0);
+	gl.uniform1i(prog_particle.uniforms.texture_data_static, fbo_data_static.read.attach(1));
+    gl.uniform1f(prog_particle.uniforms.particle_size, config.PARTICLE_SIZE);
+    gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
+    gl.uniform1f(prog_particle.uniforms.particle_size_clamp, config.PARTICLE_SIZE_CLAMP ? 1 : 0);
+
     
     /*-- Preparation Complete --*/
 
@@ -444,7 +467,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-	    draw_particles(fbo_pos, fbo_data_dynamic, pa);
+	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
 	};
@@ -857,7 +880,7 @@ function generate_particle_position_final_offset(p) {
     }
 
     // DIRTY HACK - Remove this line when proper camera animation is complete
-    //offset = [offset[0] * 0.55, offset[1]];
+    offset = [offset[0] * 0.55, offset[1]];
 
 	return [-offset[0], (offset[1] - 0.5) * sign];
 }
@@ -974,12 +997,13 @@ function draw_to_framebuffer_object (fbo) {
     gl.bindVertexArray(null);
 }
 
-function draw_particles (position, data_dynamic, pa) {
+function draw_particles (position, data_dynamic, data_static, pa) {
     let program = prog_particle;
     program.bind();
 
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
+    gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
