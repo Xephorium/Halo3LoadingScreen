@@ -26,9 +26,9 @@ let config = {
     RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
     AMBIENT_PARTICLES: 6000,
-    AMBIENT_WIDTH: 4.5,                          // Horizontal area in which ambient particles are rendered
-    AMBIENT_HEIGHT: 2,                       // Vertical area in which ambient particles are rendered
-    AMBIENT_DRIFT: .001,                       // Speed at which ambient particles randomly move
+    AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
+    AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
+    AMBIENT_DRIFT: .0005,                      // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
@@ -157,13 +157,13 @@ let frag_position = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		
-        if (ambient != 1.0) {
+		// Calculate Animation Factor
+		float factor = 0.0;
+		if (delay_time > wait) {
+			factor = min((delay_time - wait) / length_slice_assembly, 1.0);
+		}
 
-			// Calculate Animation Factor
-			float factor = 0.0;
-			if (delay_time > wait) {
-				factor = min((delay_time - wait) / length_slice_assembly, 1.0);
-			}
+        if (ambient != 1.0) {
 
 			// Generate Detour Position (For gently curved particle trajectory)
 			vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
@@ -175,7 +175,13 @@ let frag_position = `#version 300 es
         
         } else {
 
-        	cg_FragColor = current_position;
+            // Apply Particle Drift
+        	cg_FragColor = vec4(
+                current_position[0] + (final_position[0] * factor),
+                current_position[1] + (final_position[1] * factor),
+                current_position[2] + (final_position[2] * factor),
+                1.0
+        	);
         }
 	}
 `;
@@ -904,9 +910,9 @@ function initialize_ambient_particle (p) {
 	p.position_initial[2] = better_random() * config.AMBIENT_WIDTH;
 
 	// Generate Final Position
-	p.position_final[0] = 0;
-	p.position_final[1] = 0;
-	p.position_final[2] = 0;
+	p.position_final[0] = better_random() * config.AMBIENT_DRIFT;
+	p.position_final[1] = better_random() * config.AMBIENT_DRIFT;
+	p.position_final[2] = better_random() * config.AMBIENT_DRIFT;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
