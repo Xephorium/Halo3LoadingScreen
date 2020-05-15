@@ -25,10 +25,10 @@ let config = {
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2048,                         // Final = 2048
     RING_RADIUS: 3.5,
-    AMBIENT_PARTICLES: 6000,
+    AMBIENT_PARTICLES: 15000,
     AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
-    AMBIENT_DRIFT: .0005,                      // Speed at which ambient particles randomly move
+    AMBIENT_DRIFT: .00025,                      // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
