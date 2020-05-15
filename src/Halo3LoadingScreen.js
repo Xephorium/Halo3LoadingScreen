@@ -29,7 +29,7 @@ let config = {
     AMBIENT_PARTICLES: 15000,
     AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
-    AMBIENT_DRIFT: .0007,                      // Speed at which ambient particles randomly move
+    AMBIENT_DRIFT: 0.8,                      // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
@@ -182,9 +182,9 @@ let frag_position = `#version 300 es
 
             // Apply Particle Drift
         	cg_FragColor = vec4(
-                current_position[0] + (final_position[0] * factor),
-                current_position[1] + (final_position[1] * factor),
-                current_position[2] + (final_position[2] * factor),
+                initial_position[0] + (final_position[0] * factor),
+                initial_position[1] + (final_position[1] * factor),
+                initial_position[2] + (final_position[2] * factor),
                 1.0
         	);
         }
