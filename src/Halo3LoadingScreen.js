@@ -18,7 +18,7 @@ let config = {
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 66000,               // Final = 66000
-	LENGTH_SLICE_ASSEMBLY: 40,
+	LENGTH_SLICE_ASSEMBLY: 30,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -79,9 +79,9 @@ let fbo_data_static;            // Unchanging Particle Metadata
 
 let camera_pos = [];
 let camera_pos_control_points = [
-    [-4.5,  -0.2,    1],
-    [-3,     -.1,  5.3],
-    [ 3,      .5,  5.5],
+    [-4.3,  -0.2,   .7],
+    [-3.5,   -.1,  5.3],
+    [ 2,      .5,  5.8],
     [ 4.75,  .12,    2],
     [ 4.1,    .2,   -1]
 ];
@@ -137,9 +137,9 @@ let frag_position = `#version 300 es
 	vec4 generate_detour_position(vec4 p1, vec4 p2, float seed) {
 		vec4 detour = mix(p1, p2, 0.5);
 		return vec4(
-            detour[0] + generate_float(4.0, seed) * 0.0,//* 0.02,
-            detour[1] + generate_float(3.0, seed) * 0.0, //* 0.01,
-            detour[2] + generate_float(5.0, seed) * 0.0, //* 0.02,
+            detour[0] + generate_float(76.0, seed) * 0.00005, //* 0.00005,
+            detour[1] + generate_float(21.0, seed) * 0.00001, //* 0.00001,
+            detour[2] + generate_float(93.0, seed) * 0.00005, //* 0.00005,
             detour[3]
 		);
 	}
@@ -172,7 +172,7 @@ let frag_position = `#version 300 es
         	// Calculate Ring Particle Animation Factor
 			float factor = 0.0;
 			if (delay_time > wait) {
-				factor = min((delay_time - wait - length_assembly_delay) / length_loop, 1.0);
+				factor = min((delay_time - wait - length_assembly_delay) / length_slice_assembly, 1.0);
 			}
 
 			// Generate Detour Position (For gently curved particle trajectory)
@@ -798,9 +798,9 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + better_random() * 0.0 * angular_factor_x;
-	p.position_initial[1] = p.position_final[1] + better_random() * 0.0;
-	p.position_initial[2] = p.position_final[2] + better_random() * 0.0 * angular_factor_y;
+	p.position_initial[0] = p.position_final[0] + better_random() * .01 * angular_factor_x;
+	p.position_initial[1] = p.position_final[1] + better_random() * .003;
+	p.position_initial[2] = p.position_final[2] + better_random() * .01 * angular_factor_y;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
