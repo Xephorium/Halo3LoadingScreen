@@ -6,12 +6,18 @@
 
 /*--- Remaining Tasks ---*/
 
-1. Match camera movement
-  > Splines!
-2. Texture particles
+Core Functionality
+1. Texture particles (DONE)
+2. Camera movement (WIP)
+  > Splines! (DONE)
+  > Match FOV
 3. Cubes
-?. Lines
-?. Background
+4. Lines
+5. Background
+
+Enhancements
+- Precompute swerve points
+- Free camera movement
 
 
 /*--- Animation Timing ---*/
