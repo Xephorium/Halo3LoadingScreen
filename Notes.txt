@@ -16,9 +16,10 @@
 
 /*--- Animation Timing ---*/
 
-Start Delay: 2,000ms - 2.0s - 120 Blender Frames
-Ring Assembly: 66,333ms - 66.33s - 3980 Blender Frames
-End Drift: 20,666ms - 20.66s - 1240 Blender Frames      // Reduce?
+Start Delay: 2,000ms (2s ~ 120 Blender Frames)
+Ring Assembly: 66,000ms (66s ~ 3980 Blender Frames)
+End Drift: 7,000ms
+Loop Length: 75,000ms
 
 
 /*--- Image Data Organization ---*/
