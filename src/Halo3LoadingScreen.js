@@ -14,10 +14,10 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:75000,                         // Length of full animation
+    LENGTH_LOOP:75000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
-	LENGTH_RING_ASSEMBLY: 66000,
+	LENGTH_RING_ASSEMBLY: 66000,               // Final = 66000
 	LENGTH_SLICE_ASSEMBLY: 40,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
@@ -62,22 +62,30 @@ let g_light_dir = new Vector3([0, 0.4, 0.6]);
 let g_model_mat = new Matrix4();
 let g_view_mat = new Matrix4();
 
-let vao_image;             // vao for drawing image (using 2 triangles)
+let vao_image;                  // vao for drawing image (using 2 triangles)
 
-let uv_coord_data_buffer;  // Contains UV coordinates for each pixel in particle data textures
+let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures
 
-let prog_particle;         // Particle Renderer
-let prog_display;          // FBO Renderer
-let prog_position;         // Particle Position Updater
-let prog_data;             // Particle Data Updater
+let prog_particle;              // Particle Renderer
+let prog_display;               // FBO Renderer
+let prog_position;              // Particle Position Updater
+let prog_data;                  // Particle Data Updater
 
-let fbo_pos_initial;       // Particle Initial Position
-let fbo_pos_final;         // Particle Final Position
-let fbo_pos;               // Particle Position
-let fbo_data_dynamic;      // Changing Particle Metadata
-let fbo_data_static;       // Unchanging Particle Metadata
+let fbo_pos_initial;            // Particle Initial Position
+let fbo_pos_final;              // Particle Final Position
+let fbo_pos;                    // Particle Position
+let fbo_data_dynamic;           // Changing Particle Metadata
+let fbo_data_static;            // Unchanging Particle Metadata
 
 let camera_pos = [];
+let camera_pos_control_points = [
+    [-4.5,  -0.2,    1],
+    [-3,     -.1,  5.3],
+    [ 3,      .5,  5.5],
+    [ 4.75,  .12,    2],
+    [ 4.1,    .2,   -1]
+];
+let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let random = new MersenneTwister();
 let start_time, time;
 var canvas_opacity = 0;
@@ -164,7 +172,7 @@ let frag_position = `#version 300 es
         	// Calculate Ring Particle Animation Factor
 			float factor = 0.0;
 			if (delay_time > wait) {
-				factor = min((delay_time - wait - length_assembly_delay) / length_slice_assembly, 1.0);
+				factor = min((delay_time - wait - length_assembly_delay) / length_loop, 1.0);
 			}
 
 			// Generate Detour Position (For gently curved particle trajectory)
@@ -470,15 +478,16 @@ function main () {
         // Update Camera
         if (!config.ENABLE_SLICE_INSPECTION) {
 
-        	// Update Position
-			let progress = time % (config.LENGTH_LOOP + config.LENGTH_START_DELAY) / 100000;
-			camera_pos[0] = 4.25 * Math.sin(Math.PI * progress + 1 - Math.PI / 2);
-			camera_pos[1] = -0.15 * (Math.sin(Math.PI * progress + 1) -1.5);
-			camera_pos[2] = 4.25 * Math.sin(Math.PI * progress + 1);
-			focus_pos_y = -(camera_pos[1] / 2);
+            // Calculate Camera Loop Factor
+            let base_time = time % (config.LENGTH_START_DELAY + config.LENGTH_LOOP);
+		    let delay_time = Math.max(base_time - config.LENGTH_START_DELAY, 0.0);
+            let loop_factor = Math.min(delay_time / config.LENGTH_LOOP, 1.0);
+
+        	// Update Camera Position
+			camera_pos = camera_pos_interpolator.getInterpolatedPoint(loop_factor);
 
 			// Update View Matrix
-			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, focus_pos_y, 0, 0, 1, 0);
+			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
 			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
 			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
