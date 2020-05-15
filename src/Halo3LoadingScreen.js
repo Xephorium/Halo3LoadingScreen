@@ -14,11 +14,11 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:73000,                         // Length of full animation
+    LENGTH_LOOP:75000,                         // Length of full animation
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 66000,
-	LENGTH_SLICE_ASSEMBLY: 1500,
+	LENGTH_SLICE_ASSEMBLY: 40,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -120,7 +120,7 @@ let frag_position = `#version 300 es
     // Note: Consistently returns the same pseudo-random float for the same two input values.  
 	float generate_float(float value_one, float value_two) {
 	    float seed_one = 78.0;
-	    float seed_two = 1349.0;
+	    float seed_two = 13647.0;
 	    float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
 	    return magnitude;
 	}
@@ -129,9 +129,9 @@ let frag_position = `#version 300 es
 	vec4 generate_detour_position(vec4 p1, vec4 p2, float seed) {
 		vec4 detour = mix(p1, p2, 0.5);
 		return vec4(
-            detour[0] + generate_float(4.0, seed) * 0.2,
-            detour[1] + generate_float(3.0, seed) * 0.05,
-            detour[2] + generate_float(5.0, seed) * 0.2,
+            detour[0] + generate_float(4.0, seed) * 0.0,//* 0.02,
+            detour[1] + generate_float(3.0, seed) * 0.0, //* 0.01,
+            detour[2] + generate_float(5.0, seed) * 0.0, //* 0.02,
             detour[3]
 		);
 	}
@@ -789,9 +789,9 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[2] = particle_position_final[2];
 
     // Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + better_random() * 1.2 * angular_factor_x;
-	p.position_initial[1] = p.position_final[1] + better_random() * .5;
-	p.position_initial[2] = p.position_final[2] + better_random() * 1.2 * angular_factor_y;
+	p.position_initial[0] = p.position_final[0] + better_random() * 0.0 * angular_factor_x;
+	p.position_initial[1] = p.position_final[1] + better_random() * 0.0;
+	p.position_initial[2] = p.position_final[2] + better_random() * 0.0 * angular_factor_y;
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
