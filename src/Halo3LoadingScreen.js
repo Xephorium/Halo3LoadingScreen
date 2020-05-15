@@ -29,7 +29,7 @@ let config = {
     AMBIENT_PARTICLES: 15000,
     AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
-    AMBIENT_DRIFT: 0.8,                      // Speed at which ambient particles randomly move
+    AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
@@ -39,7 +39,7 @@ let config = {
     PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
-    CAMERA_DIST_FACTOR: 1.65,                   // Multiplier for camera-position dependent effects
+    CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
     ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
