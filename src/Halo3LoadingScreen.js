@@ -14,13 +14,14 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:72000,                         // Length of full animation
-	LENGTH_START_DELAY: 800,
-	LENGTH_RING_ASSEMBLY: 63000,
+    LENGTH_LOOP:73000,                         // Length of full animation
+	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
+	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
+	LENGTH_RING_ASSEMBLY: 66000,
 	LENGTH_SLICE_ASSEMBLY: 1500,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
-	LENGTH_CANVAS_FADE: 2000,
+	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 2048,                         // Final = 2048
@@ -28,7 +29,7 @@ let config = {
     AMBIENT_PARTICLES: 15000,
     AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
-    AMBIENT_DRIFT: .00025,                      // Speed at which ambient particles randomly move
+    AMBIENT_DRIFT: .0007,                      // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
@@ -107,6 +108,7 @@ let frag_position = `#version 300 es
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
+	uniform float length_assembly_delay;
 	uniform float length_ring_assembly;
 	uniform float length_slice_assembly;
 	in vec2 v_coord; // UV coordinate of current point.
@@ -156,14 +158,14 @@ let frag_position = `#version 300 es
 		float ambient = texture(texture_data_static, v_coord).b;
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
-		
-		// Calculate Animation Factor
-		float factor = 0.0;
-		if (delay_time > wait) {
-			factor = min((delay_time - wait) / length_slice_assembly, 1.0);
-		}
 
         if (ambient != 1.0) {
+
+        	// Calculate Ring Particle Animation Factor
+			float factor = 0.0;
+			if (delay_time > wait) {
+				factor = min((delay_time - wait - length_assembly_delay) / length_slice_assembly, 1.0);
+			}
 
 			// Generate Detour Position (For gently curved particle trajectory)
 			vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
@@ -174,6 +176,9 @@ let frag_position = `#version 300 es
 			cg_FragColor = position;
         
         } else {
+
+        	// Calculate Ambient Particle Animation Factor
+			float factor = min(delay_time / length_loop, 1.0);
 
             // Apply Particle Drift
         	cg_FragColor = vec4(
@@ -968,6 +973,7 @@ function update_particle_positions (position_initial, position_final, position, 
     gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_assembly_delay, config.LENGTH_ASSEMBLY_DELAY);
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.camera_dist_max, config.CAMERA_DIST_MAX);
