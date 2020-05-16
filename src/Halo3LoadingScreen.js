@@ -27,8 +27,8 @@ let config = {
     RING_SLICES: 1900,                         // Final = 2048
     RING_RADIUS: 3,
     AMBIENT_PARTICLES: 15000,
-    AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
-    AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
+    AMBIENT_WIDTH: 4,                        // Horizontal area in which ambient particles are rendered
+    AMBIENT_HEIGHT: 1.5,                         // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
@@ -80,19 +80,19 @@ let fbo_data_static;            // Unchanging Particle Metadata
 
 let camera_pos = [];
 let camera_pos_control_points = [
-    [-4.7,  -0.2,   .6],
-    [-3.7,   -.1,  5.2],
-    [ 1.8,    .5, 5.75],
-    [ 4.75,  .12,    2],
-    [ 4.1,    .2,   -1]
+    [-2.4, -0.2,   1.8],
+    [-2.1,    0,  3.0],
+    [.5,   .1,  5.5],
+    [ 2,   .25,    2],
+    [ 2.5,   0.2,   1.15]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
     [  -3, 0, 0],
-    [-1.5, 0, 3],
-    [ 1.5, 0, 3],
-    [   3, 0, 0]
+    [-2.1, 0, 3.3],
+    [ 2.6, 0, 3.3],
+    [   3, 0, -.3]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 let random = new MersenneTwister();
