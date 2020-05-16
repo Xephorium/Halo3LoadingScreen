@@ -72,6 +72,7 @@ let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
 
 let fbo_pos_initial;            // Particle Initial Position
+let fbo_pos_swerve;             // Particle Swerve Position
 let fbo_pos_final;              // Particle Final Position
 let fbo_pos;                    // Particle Position
 let fbo_data_dynamic;           // Changing Particle Metadata
@@ -110,6 +111,7 @@ let frag_position = `#version 300 es
 
     // Input Variables
     uniform sampler2D texture_initial_position;
+    uniform sampler2D texture_swerve_position;
 	uniform sampler2D texture_final_position;
 	uniform sampler2D texture_position;
 	uniform sampler2D texture_data_static;
@@ -133,18 +135,7 @@ let frag_position = `#version 300 es
 	    return magnitude;
 	}
 
-	// Detour Point Generator
-	vec4 generate_detour_position(vec4 p1, vec4 p2, float seed) {
-		vec4 detour = mix(p1, p2, 0.5);
-		return vec4(
-            detour[0] + generate_float(76.0, seed) * 0.00005, //* 0.00005,
-            detour[1] + generate_float(21.0, seed) * 0.00001, //* 0.00001,
-            detour[2] + generate_float(93.0, seed) * 0.00005, //* 0.00005,
-            detour[3]
-		);
-	}
-
-	// Quadratic Spline Interpolator
+	// 3-Point Curve Interpolator
 	// Note: Returns a position in 3D space representing a particle's location on
 	//       a smooth bezier curve between three points given factor t [0-1]. 
 	// Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
@@ -159,6 +150,7 @@ let frag_position = `#version 300 es
 
 		// Local Variables
 		vec4 initial_position = texture(texture_initial_position, v_coord);
+		vec4 swerve_position = texture(texture_swerve_position, v_coord);
 		vec4 final_position = texture(texture_final_position, v_coord);
 		vec4 current_position = texture(texture_position, v_coord);
 		float wait = texture(texture_data_static, v_coord).r;
@@ -175,11 +167,8 @@ let frag_position = `#version 300 es
 				factor = min((delay_time - wait - length_assembly_delay) / length_slice_assembly, 1.0);
 			}
 
-			// Generate Detour Position (For gently curved particle trajectory)
-			vec4 detour_position = generate_detour_position(initial_position, final_position, seed);
-
-			// Find Current Position Along Trajectory Curve
-			vec4 position = interpolate_location(initial_position, detour_position, final_position, factor);
+			// Find Current Position Along Curve
+			vec4 position = interpolate_location(initial_position, swerve_position, final_position, factor);
 
 			cg_FragColor = position;
         
@@ -494,7 +483,7 @@ function main () {
         }
 
         // Render Scene
-		update_particle_positions(fbo_pos_initial, fbo_pos_final, fbo_pos, fbo_data_static);
+		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
@@ -630,6 +619,7 @@ function initialize_framebuffer_objects() {
     gl.getExtension('EXT_color_buffer_float');
 
     fbo_pos_initial = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    fbo_pos_swerve = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     fbo_pos_final = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     fbo_pos = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     fbo_data_dynamic = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
@@ -641,6 +631,7 @@ function populate_framebuffer_objects (pa) {
 
 	// Initialize Texture Arrays
 	let position_initial = [];
+	let position_swerve = [];
 	let position_final = [];
 	let position = [];
 	let data_dynamic = [];
@@ -653,6 +644,12 @@ function populate_framebuffer_objects (pa) {
 		position_initial.push(pa[i].position_initial[1]);
 		position_initial.push(pa[i].position_initial[2]);
 		position_initial.push(1);
+
+		// Swerve Position
+		position_swerve.push(pa[i].position_swerve[0]);
+		position_swerve.push(pa[i].position_swerve[1]);
+		position_swerve.push(pa[i].position_swerve[2]);
+		position_swerve.push(1);
 
         // Final Position
 		position_final.push(pa[i].position_final[0]);
@@ -682,6 +679,7 @@ function populate_framebuffer_objects (pa) {
     
     // Add Textures to Framebuffer Objects
 	fbo_pos_initial.read.addTexture(new Float32Array(position_initial));
+	fbo_pos_swerve.read.addTexture(new Float32Array(position_swerve));
 	fbo_pos_final.read.addTexture(new Float32Array(position_final));
 	fbo_pos.read.addTexture(new Float32Array(position));
 	fbo_data_dynamic.read.addTexture(new Float32Array(data_dynamic));
@@ -777,6 +775,7 @@ function create_double_framebuffer_object (w, h, internalFormat, format, type, p
 
 function Particle () {
 	this.position_initial = new Array(3);
+	this.position_swerve = new Array(3);
 	this.position_final = new Array(3);
 	this.position = new Array(3);
 	this.alpha = 0.0;
@@ -797,10 +796,16 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[1] = particle_position_final[1];
 	p.position_final[2] = particle_position_final[2];
 
-    // Generate Initial Position
+	// Generate Initial Position
 	p.position_initial[0] = p.position_final[0] + better_random() * .01 * angular_factor_x;
 	p.position_initial[1] = p.position_final[1] + better_random() * .003;
 	p.position_initial[2] = p.position_final[2] + better_random() * .01 * angular_factor_y;
+
+	// Generate Swerve Position
+	let swerve_base = middle_point(p.position_final, p.position_initial);
+	p.position_swerve[0] = swerve_base[0] - (better_random() * 0.00005);
+	p.position_swerve[1] = swerve_base[1] - (better_random() * 0.00001);
+	p.position_swerve[2] = swerve_base[2] - (better_random() * 0.00005);
 
     // Generate Position
 	p.position[0] = p.position_initial[0];
@@ -928,6 +933,11 @@ function initialize_ambient_particle (p) {
 	p.position_final[1] = better_random() * config.AMBIENT_DRIFT;
 	p.position_final[2] = better_random() * config.AMBIENT_DRIFT;
 
+	// Generate Swerve Position
+	p.position_swerve[0] = 0.0;
+	p.position_swerve[1] = 0.0;
+	p.position_swerve[2] = 0.0;
+
     // Generate Position
 	p.position[0] = p.position_initial[0];
 	p.position[1] = p.position_initial[1];
@@ -947,17 +957,22 @@ function invert_particle_over_x (p) {
 	new_particle.position_initial[1] = p.position_initial[1];
 	new_particle.position_initial[2] = -p.position_initial[2];
 
-	// Generate Final Position
+	// Invert Swerve Position
+	new_particle.position_swerve[0] = p.position_swerve[0];
+	new_particle.position_swerve[1] = p.position_swerve[1];
+	new_particle.position_swerve[2] = -p.position_swerve[2];
+
+	// Invert Final Position
 	new_particle.position_final[0] = p.position_final[0];
 	new_particle.position_final[1] = p.position_final[1];
 	new_particle.position_final[2] = -p.position_final[2];
 
-    // Generate Position
+    // Invert Position
 	new_particle.position[0] = p.position[0];
 	new_particle.position[1] = p.position[1];
 	new_particle.position[2] = -p.position[2];
 
-    // Generate Ambient Data
+    // Invert Ambient Data
     new_particle.alpha = p.alpha;
     new_particle.brightness = p.brightness;
     new_particle.wait = p.wait;
@@ -970,14 +985,15 @@ function invert_particle_over_x (p) {
 
 /*--- Draw Methods ---*/
 
-function update_particle_positions (position_initial, position_final, position, data_static) {
+function update_particle_positions (position_initial, position_swerve, position_final, position, data_static) {
     let program = prog_position;
     program.bind();
 
     gl.uniform1i(program.uniforms.texture_initial_position, position_initial.read.attach(1));
-    gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(2));
-    gl.uniform1i(program.uniforms.texture_position, position.read.attach(3));
-    gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(4));
+    gl.uniform1i(program.uniforms.texture_swerve_position, position_swerve.read.attach(2));
+    gl.uniform1i(program.uniforms.texture_final_position, position_final.read.attach(3));
+    gl.uniform1i(program.uniforms.texture_position, position.read.attach(4));
+    gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(5));
 
     gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
@@ -1049,4 +1065,12 @@ function draw_particles (position, data_dynamic, data_static, pa) {
 
 function better_random() {
 	return random.random() * 2 - 1;
+}
+
+function middle_point(pointOne, pointTwo) {
+	return [
+        Interpolator.linearlyInterpolateValues(pointOne[0], pointTwo[0], 0.5),
+        Interpolator.linearlyInterpolateValues(pointOne[1], pointTwo[1], 0.5),
+        Interpolator.linearlyInterpolateValues(pointOne[2], pointTwo[2], 0.5),
+	];
 }
