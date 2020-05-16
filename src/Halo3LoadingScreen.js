@@ -24,11 +24,11 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 1900,                         // Final = 2048
+    RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
     AMBIENT_PARTICLES: 20000,
-    AMBIENT_WIDTH: 4,                        // Horizontal area in which ambient particles are rendered
-    AMBIENT_HEIGHT: 1.5,                         // Vertical area in which ambient particles are rendered
+    AMBIENT_WIDTH: 4,                          // Horizontal area in which ambient particles are rendered
+    AMBIENT_HEIGHT: 1.2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
@@ -237,7 +237,7 @@ let frag_data = `#version 300 es
         }
 
         // Adjust Alpha for Camera Clipping
-        float camera_distance_min = 0.07;
+        float camera_distance_min = 0.05;
  		float camera_distance_min_fade = .5;
  		float factor = (distance - camera_distance_min) / (camera_distance_min_fade - camera_distance_min);
  		factor = min(max(factor, 0.0), 1.0);
