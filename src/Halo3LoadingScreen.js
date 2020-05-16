@@ -87,6 +87,14 @@ let camera_pos_control_points = [
     [ 4.1,    .2,   -1]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
+let camera_focus = [];
+let camera_focus_control_points = [
+    [  -3, 0, 0],
+    [-1.5, 0, 3],
+    [ 1.5, 0, 3],
+    [   3, 0, 0]
+];
+let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 let random = new MersenneTwister();
 let start_time, time;
 var canvas_opacity = 0;
@@ -472,11 +480,22 @@ function main () {
 		    let delay_time = Math.max(base_time - config.LENGTH_START_DELAY, 0.0);
             let loop_factor = Math.min(delay_time / config.LENGTH_LOOP, 1.0);
 
-        	// Update Camera Position
+        	// Update Camera Positions
 			camera_pos = camera_pos_interpolator.getInterpolatedPoint(loop_factor);
+			camera_focus = camera_focus_interpolator.getInterpolatedPoint(loop_factor);
 
 			// Update View Matrix
-			g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
+			g_view_mat.setLookAt(
+			    camera_pos[0],
+			    camera_pos[1],
+			    camera_pos[2],
+			    camera_focus[0],
+			    camera_focus[1],
+			    camera_focus[2],
+			    0,
+			    1,
+			    0
+			);
 			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
 			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
 			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
