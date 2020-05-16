@@ -20,12 +20,21 @@ Enhancements
 - Free camera movement
 
 
-/*--- Animation Timing ---*/
+/*--- Animation Details ---*/
 
-Start Delay: 2,000ms (2s ~ 120 Blender Frames)
-Ring Assembly: 66,000ms (66s ~ 3980 Blender Frames)
-End Drift: 7,000ms
-Loop Length: 75,000ms
+Timing
+  Start Delay: 2,000ms (2s ~ 120 Blender Frames)
+  Ring Assembly: 66,000ms (66s ~ 3980 Blender Frames)
+  End Drift: 7,000ms
+  Loop Length: 75,000ms
+
+Pathing
+  Focus: Semicircle of slightly lower radius than the ring itself at the ring's vertical center. Radius decreases
+         slightly as ring approaches 1/2 completion. Final point is extended toward the back side to center the camera
+         during connection.
+  Camera: Semicircle that begins about 1/4 through one side of the ring's construction. Starts lower than ring. Speeds
+          up until rough speed match at half way point. Slows to let ring pass and rises over top, drifting down and toward center.
+
 
 
 /*--- Image Data Organization ---*/
