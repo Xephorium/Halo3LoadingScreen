@@ -14,11 +14,11 @@
 /*--- Global Configuration ---*/
 
 let config = {
-    LENGTH_LOOP:75000,                         // Length of full animation (Final = 75000)
+    LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
-	LENGTH_RING_ASSEMBLY: 66000,               // Final = 66000
-	LENGTH_SLICE_ASSEMBLY: 30,
+	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
+	LENGTH_SLICE_ASSEMBLY: 25,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -82,17 +82,17 @@ let camera_pos = [];
 let camera_pos_control_points = [
     [-2.4, -0.2, 1.8],
     [-2.1,  .05, 3.0],
-    [  .5,  .15, 5.5],
+    [  .5,  .15, 5.2],
     [ 2.2,  .25,   2],
     [ 2.5, 0.15,   1]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
-    [  -3,   0,   0],
-    [-2.1,   0, 3.3],
-    [ 2.8,   0, 3.3],
-    [   3, -.1, -.5]
+    [  -3,    0,   0],
+    [-2.1,    0, 3.3],
+    [ 2.8, -.02, 3.3],
+    [   3,  -.1, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 let random = new MersenneTwister();
@@ -380,7 +380,7 @@ function main () {
         camera_pos[2] = 10;
 
 	    // Define Standard View Matrix
-        g_proj_mat.setPerspective(45, canvas.width/canvas.height, .02, 10000);
+        g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
         // LookAt Parameters: camera pos, focus pos, up vector 
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, -0.5, 0, 0, 1, 0); // camera pos, focus pos, up vector
     }
@@ -816,9 +816,9 @@ function initialize_active_particle (p, slice, particle) {
 	p.position_final[2] = particle_position_final[2];
 
 	// Generate Initial Position
-	p.position_initial[0] = p.position_final[0] + better_random() * .01 * angular_factor_x;
-	p.position_initial[1] = p.position_final[1] + better_random() * .003;
-	p.position_initial[2] = p.position_final[2] + better_random() * .01 * angular_factor_y;
+	p.position_initial[0] = p.position_final[0] + min_random() * .005 * angular_factor_x;
+	p.position_initial[1] = p.position_final[1] + better_random() * .001;
+	p.position_initial[2] = p.position_final[2] + min_random() * .005 * angular_factor_y;
 
 	// Generate Swerve Position
 	let swerve_base = middle_point(p.position_final, p.position_initial);
@@ -935,7 +935,7 @@ function generate_particle_position_final_offset(p) {
     }
 
     // DIRTY HACK - Remove this line when proper camera animation is complete
-    offset = [offset[0] * 0.55, offset[1]];
+    offset = [offset[0] * 0.75, offset[1]];
 
 	return [-offset[0], (offset[1] - 0.5) * sign];
 }
@@ -1084,6 +1084,14 @@ function draw_particles (position, data_dynamic, data_static, pa) {
 
 function better_random() {
 	return random.random() * 2 - 1;
+}
+
+// Generates random number [-1, -.25] || [.25, 1]
+function min_random() {
+	let reduced_range = better_random() * .75;
+	if (reduced_range >= 0) reduced_range += .25;
+	else reduced_range -= .25;
+	return reduced_range;
 }
 
 function middle_point(pointOne, pointTwo) {
