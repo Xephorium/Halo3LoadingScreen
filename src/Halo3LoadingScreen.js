@@ -80,9 +80,9 @@ let fbo_data_static;            // Unchanging Particle Metadata
 
 let camera_pos = [];
 let camera_pos_control_points = [
-    [-4.3,  -0.2,   .7],
-    [-3.5,   -.1,  5.3],
-    [ 2,      .5,  5.8],
+    [-4.7,  -0.2,   .6],
+    [-3.7,   -.1,  5.2],
+    [ 1.8,    .5, 5.75],
     [ 4.75,  .12,    2],
     [ 4.1,    .2,   -1]
 ];
