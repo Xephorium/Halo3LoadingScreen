@@ -24,8 +24,8 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-    RING_SLICES: 2048,                         // Final = 2048
-    RING_RADIUS: 3.5,
+    RING_SLICES: 1900,                         // Final = 2048
+    RING_RADIUS: 3,
     AMBIENT_PARTICLES: 15000,
     AMBIENT_WIDTH: 4.5,                        // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 2,                         // Vertical area in which ambient particles are rendered
@@ -372,7 +372,7 @@ function main () {
         camera_pos[2] = 10;
 
 	    // Define Standard View Matrix
-        g_proj_mat.setPerspective(85, canvas.width/canvas.height, .02, 10000);
+        g_proj_mat.setPerspective(45, canvas.width/canvas.height, .02, 10000);
         // LookAt Parameters: camera pos, focus pos, up vector 
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, -0.5, 0, 0, 1, 0); // camera pos, focus pos, up vector
     }
