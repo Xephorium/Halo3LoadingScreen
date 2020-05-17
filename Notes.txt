@@ -8,9 +8,9 @@
 
 Core Functionality
 1. Texture particles (DONE)
-2. Camera movement (WIP)
+2. Camera movement (DONE)
   > Splines! (DONE)
-  > Match FOV
+  > Match FOV (DONE)
 3. Cubes
 4. Lines
 5. Background
