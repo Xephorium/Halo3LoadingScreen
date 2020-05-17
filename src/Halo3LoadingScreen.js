@@ -40,7 +40,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    ENABLE_SLICE_INSPECTION: false,            // Places camera statically perpindicular to first slice
+    ENABLE_DEVELOPER_CAMERA: true,             // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
@@ -362,17 +362,17 @@ function main () {
 	prog_particle.bind();
 
     // Set Up Camera
-    if (config.ENABLE_SLICE_INSPECTION) {
+    if (config.ENABLE_DEVELOPER_CAMERA) {
 
-    	// Define Slice Inspection Position
-        camera_pos[0] = -config.RING_RADIUS;
-        camera_pos[1] = 0;
-        camera_pos[2] = 1;
+    	// Define Developer Camera Position
+        camera_pos[0] = 0;
+        camera_pos[1] = .3;
+        camera_pos[2] = 4.9;
 
-        // Define Slice Inspection View Matrix
-    	g_proj_mat.setPerspective(20, canvas.width/canvas.height, .02, 10000);
+        // Define Developer Camera View Matrix
+    	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
     	// LookAt Parameters: camera pos, focus pos, up vector      
-        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -config.RING_RADIUS, 0, 0, 0, 1, 0);
+        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
 
     } else {
 
@@ -437,7 +437,7 @@ function main () {
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
         // Update Camera
-        if (!config.ENABLE_SLICE_INSPECTION) {
+        if (!config.ENABLE_DEVELOPER_CAMERA) {
 
             // Calculate Camera Loop Factor
             let base_time = time % (config.LENGTH_START_DELAY + config.LENGTH_LOOP);
