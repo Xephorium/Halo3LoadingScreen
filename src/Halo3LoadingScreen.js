@@ -517,6 +517,7 @@ class GLProgram {
 
 /*--- Buffer Setup ---*/
 
+// Note: This VertexArrayObject is used to draw to each square data texture.
 function create_vertex_buffer () {
 
 	// Create Vertex Array Object
