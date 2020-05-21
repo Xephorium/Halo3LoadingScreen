@@ -40,7 +40,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    ENABLE_CUBE_RENDERING: false,              // Whether to render cubes 
+    ENABLE_CUBE_RENDERING: true,               // Whether to render cubes 
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -339,17 +339,13 @@ let vertex_cube = `#version 300 es
 
     // Input Variables
     in vec4 a_position;
-    uniform float index;
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
 
 	void main() {
 
-		// Local Variables
-		vec4 offset = vec4(0.2 * index, 0.0, 0.0, 0.0);
-
-		gl_Position = u_proj_mat * u_view_mat * (a_position + offset);
+		gl_Position = u_proj_mat * u_view_mat * a_position;
     }
 `;
 
@@ -429,7 +425,7 @@ function main () {
 	let pa = loadingParticleFactory.generateLoadingParticles();
 
     // Create Buffers (Define Input Coordinates for Shaders)
-   	create_vertex_array_objects();
+   	create_vertex_array_objects(pa);
    	initialize_buffers(prog_particle); 
 	populate_buffers(pa);
 
@@ -505,7 +501,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-		if (config.ENABLE_CUBE_RENDERING) for (let x = 0; x < 3; x++) draw_cube(g_proj_mat, g_view_mat, x);
+		if (config.ENABLE_CUBE_RENDERING) draw_cubes(g_proj_mat, g_view_mat);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -555,7 +551,7 @@ class GLProgram {
 
 /*--- Buffer Setup ---*/
 
-function create_vertex_array_objects () {
+function create_vertex_array_objects (pa) {
 
     /* Data Texture VAO */
 
@@ -603,7 +599,7 @@ function create_vertex_array_objects () {
 	//  | |v7---|-|v4
 	//  |/      |/
 	//  v2------v3
-     var CUBE_VERTICES = [
+    var CUBE_VERTICES = [
 		 .1, .1, .1,
 		-.1, .1, .1,
 		-.1,-.1, .1,
@@ -612,16 +608,38 @@ function create_vertex_array_objects () {
 		 .1, .1,-.1,
 		-.1, .1,-.1,
 		-.1,-.1,-.1
-	  ];
+    ];
 
-	  var CUBE_INDICES = new Uint8Array([
+    var CUBE_INDICES = new Uint8Array([
 		0, 1, 2,   0, 2, 3,    // front
 		0, 3, 4,   0, 4, 5,    // right
 		0, 5, 6,   0, 6, 1,    // up
 		1, 6, 7,   1, 7, 2,    // left
 		7, 4, 3,   7, 3, 2,    // down
 		4, 7, 6,   4, 6, 5     // back
-	 ]);
+    ]);
+
+    // Generate Final Cube Vertices & Indices
+    // Note: Vertices = Cubes * 8, Indices = Cubes * 36
+    let FINAL_VERTICES = [];
+    let FINAL_INDICES = [];
+    for (let slice = 0; slice < config.RING_SLICES; slice++) {
+
+    	// Determine Cube Position
+    	let cube_position = pa[slice * config.SLICE_PARTICLES].position_final;
+
+    	// Add Cube Vertices
+    	for (let vertex = 0; vertex < 8; vertex++) {
+    		FINAL_VERTICES.push(cube_position[0] + (CUBE_VERTICES[(vertex * 3)] * .03));
+    		FINAL_VERTICES.push(cube_position[1] + (CUBE_VERTICES[(vertex * 3) + 1] * .03));
+    		FINAL_VERTICES.push(cube_position[2] + (CUBE_VERTICES[(vertex * 3) + 2] * .03));
+    	}
+
+    	// Add Cube Indices
+    	for (let position = 0; position < 36; position++) {
+    		FINAL_INDICES.push((slice * 24) + CUBE_INDICES[position]);
+    	}
+    }
 
 	// Create Vertex Array Object
     vao_cube = gl.createVertexArray();
@@ -632,7 +650,7 @@ function create_vertex_array_objects () {
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
     gl.bufferData(
         gl.ARRAY_BUFFER,
-        new Float32Array(CUBE_VERTICES),
+        new Float32Array(FINAL_VERTICES),
         gl.STATIC_DRAW
     );
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
@@ -641,7 +659,7 @@ function create_vertex_array_objects () {
     // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
     vertex_element_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(CUBE_INDICES), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(FINAL_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
@@ -915,14 +933,13 @@ function draw_to_framebuffer_object (fbo) {
     gl.bindVertexArray(null);
 }
 
-function draw_cube (g_proj_mat, g_view_mat, index) {
+function draw_cubes (g_proj_mat, g_view_mat, index) {
     let program = prog_cube;
     program.bind();
 
     // Send Values to Shader
     gl.uniformMatrix4fv(prog_cube.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(prog_cube.uniforms.u_view_mat, false, g_view_mat.elements);
-	gl.uniform1f(program.uniforms.index, index);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -930,7 +947,7 @@ function draw_cube (g_proj_mat, g_view_mat, index) {
 	gl.bindVertexArray(vao_cube);
 
 	// Draw Trangles Using 36 Vertices
-    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, 36 * config.RING_SLICES, gl.UNSIGNED_SHORT, 0);
 
     gl.bindVertexArray(null);
 }
