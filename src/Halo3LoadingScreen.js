@@ -64,7 +64,7 @@ let g_view_mat = new Matrix4();
 
 let vao_image;                  // vao for drawing image (using 2 triangles)
 
-let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures
+let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
 let prog_particle;              // Particle Renderer
 let prog_display;               // FBO Renderer
