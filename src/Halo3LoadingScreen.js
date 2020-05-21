@@ -623,10 +623,10 @@ function create_vertex_array_objects (pa) {
     // Note: Vertices = Cubes * 8, Indices = Cubes * 36
     let FINAL_VERTICES = [];
     let FINAL_INDICES = [];
-    for (let slice = 0; slice < config.RING_SLICES; slice++) {
+    for (let slice = 0; slice < config.RING_SLICES * 3; slice++) {
 
     	// Determine Cube Position
-    	let cube_position = pa[slice * config.SLICE_PARTICLES].position_final;
+    	let cube_position = pa[slice * (config.SLICE_PARTICLES/3)].position_final;
 
     	// Add Cube Vertices
     	for (let vertex = 0; vertex < 8; vertex++) {
