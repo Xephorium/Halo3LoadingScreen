@@ -92,7 +92,7 @@
         p.seed = Math.max(this.better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
 
         // Generate Slice Angle
-        p.slice_angle = 180 - ((slice / config.RING_SLICES) * 360);
+        p.slice_angle = 180 - ((slice / this.config.RING_SLICES) * 360);
     }
 
     initialize_ambient_particle (p) {
@@ -217,9 +217,6 @@
             case 32: offset = [ 3,  1]; break;
             default: break;
         }
-
-        // DIRTY HACK - Remove this line when proper camera animation is complete
-        offset = [offset[0] * 0.75, offset[1]];
 
         return [-offset[0], (offset[1] - 0.5) * sign];
     }

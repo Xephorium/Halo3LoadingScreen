@@ -40,7 +40,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    ENABLE_CUBE_RENDERING: true,               // Whether to render cubes 
+    ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks 
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -64,7 +64,7 @@ let g_model_mat = new Matrix4();
 let g_view_mat = new Matrix4();
 
 let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
-let vao_cube;                   // VAO For Drawing Cube
+let vao_blocks;                   // VAO For Drawing Ring Blocks
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -72,7 +72,7 @@ let prog_particle;              // Particle Renderer
 let prog_display;               // FBO Renderer
 let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
-let prog_cube;                  // Cube Renderer
+let prog_blocks;                // Block Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -252,6 +252,9 @@ let frag_data = `#version 300 es
 		} else if (delay_time > wait) {
 			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * alpha_scale;
 		}
+
+		// Override Alpha
+		//alpha = 0.0;
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
 	}	
@@ -335,7 +338,7 @@ let frag_particle = `#version 300 es
 	}
 `;
 
-let vertex_cube = `#version 300 es
+let vertex_blocks = `#version 300 es
 
     // Input Variables
     in vec4 a_position;
@@ -349,7 +352,7 @@ let vertex_cube = `#version 300 es
     }
 `;
 
-let frag_cube = `#version 300 es
+let frag_blocks = `#version 300 es
 	precision highp float;
 
     // Output Variables
@@ -390,7 +393,7 @@ function main () {
     // Create Rendering Programs
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
-    prog_cube = new GLProgram(vertex_cube, frag_cube);
+    prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -398,14 +401,14 @@ function main () {
     if (config.ENABLE_DEVELOPER_CAMERA) {
 
     	// Define Developer Camera Position
-        camera_pos[0] = 0;
-        camera_pos[1] = .3;
-        camera_pos[2] = 4.9;
+        camera_pos[0] = -3.3;
+        camera_pos[1] = .1;//.3;
+        camera_pos[2] = .3;//4.9;
 
         // Define Developer Camera View Matrix
     	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
     	// LookAt Parameters: camera pos, focus pos, up vector      
-        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
+        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -3, 0, 0, 0, 1, 0);
 
     } else {
 
@@ -424,8 +427,11 @@ function main () {
     let loadingParticleFactory = new LoadingParticleFactory(config);
 	let pa = loadingParticleFactory.generateLoadingParticles();
 
+    // Create Vertex Array Objects
+    create_data_texture_vertex_array_object();
+    create_ring_block_vertex_array_object(pa);
+
     // Create Buffers (Define Input Coordinates for Shaders)
-   	create_vertex_array_objects(pa);
    	initialize_buffers(prog_particle); 
 	populate_buffers(pa);
 
@@ -501,7 +507,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-		if (config.ENABLE_CUBE_RENDERING) draw_cubes(g_proj_mat, g_view_mat);
+		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -549,13 +555,11 @@ class GLProgram {
 }
 
 
-/*--- Buffer Setup ---*/
+/*--- Vertex Array Object Setup ---*/
 
-function create_vertex_array_objects (pa) {
-
-    /* Data Texture VAO */
-
-    // Note: This VertexArrayObject is used to draw to each square data texture.
+// Note: This VertexArrayObject contains a square consisting of two triangles,
+//       on which each data texture is drawn.
+function create_data_texture_vertex_array_object () {
 
 	// Create Vertex Array Object
     vao_data_texture = gl.createVertexArray();
@@ -586,12 +590,15 @@ function create_vertex_array_objects (pa) {
     // Unbind
     gl.bindVertexArray(null);
 
+}
 
-    /* Cube VAO */
+// Note: This VertexArrayObject contains the vertices and shared vertex indices
+//       required to draw each block in the final ring.
+function create_ring_block_vertex_array_object (pa) {
 
-    // Note: This VertexArrayObject is used to draw each cube.
+    /* Variable Declarations */
 
-	// Create a cube
+	// Base Block Vertices
 	//    v6----- v5
 	//   /|      /|
 	//  v1------v0|
@@ -599,7 +606,7 @@ function create_vertex_array_objects (pa) {
 	//  | |v7---|-|v4
 	//  |/      |/
 	//  v2------v3
-    var CUBE_VERTICES = [
+    var BLOCK_VERTICES = [
 		 .1, .1, .1,
 		-.1, .1, .1,
 		-.1,-.1, .1,
@@ -610,54 +617,68 @@ function create_vertex_array_objects (pa) {
 		-.1,-.1,-.1
     ];
 
-    var CUBE_INDICES = new Uint8Array([
-		0, 1, 2,   0, 2, 3,    // front
-		0, 3, 4,   0, 4, 5,    // right
-		0, 5, 6,   0, 6, 1,    // up
-		1, 6, 7,   1, 7, 2,    // left
-		7, 4, 3,   7, 3, 2,    // down
-		4, 7, 6,   4, 6, 5     // back
+    var BLOCK_INDICES = new Uint8Array([
+		0, 1, 2,  0, 2, 3, // front
+		0, 3, 4,  0, 4, 5, // right
+		0, 5, 6,  0, 6, 1, // up
+		1, 6, 7,  1, 7, 2, // left
+		7, 4, 3,  7, 3, 2, // down
+		4, 7, 6,  4, 6, 5  // back
     ]);
 
-    // Generate Final Cube Vertices & Indices
-    // Note: Vertices = Cubes * 8, Indices = Cubes * 36
+    /* Block Generation Code */
+
+    // Note: This block generates the vertices for every block in the constructed 
+    //       ring. It also generates an array containing indices that specify which
+    //       vertices of each block are shared.
+    // 
+    //       Total Vertices = Blocks * 8
+    //       Total Indices = Blocks * 36
     let FINAL_VERTICES = [];
     let FINAL_INDICES = [];
-    for (let slice = 0; slice < config.RING_SLICES * 3; slice++) {
 
-    	// Determine Particle Data
-    	let cube_position = pa[slice * (config.SLICE_PARTICLES / 3)].position_final;
-    	let slice_angle = pa[slice * (config.SLICE_PARTICLES / 3)].slice_angle;
+    // For Each Slice
+    for (let slice = 0; slice < config.RING_SLICES; slice++) {
 
-    	// Add Cube Vertices
-    	for (let v = 0; v < 8; v++) {
+    	// For Each Block
+    	for (let block = 0; block < config.SLICE_PARTICLES; block++) {
 
-    		// Calculate Vertex Position
-    		let cube_scale_factor = .04845;
-    		let vertex = [
-    		    CUBE_VERTICES[(v * 3)] * cube_scale_factor,
-    		    CUBE_VERTICES[(v * 3) + 1] * cube_scale_factor,
-                CUBE_VERTICES[(v * 3) + 2] * cube_scale_factor
-    		];
-            
-            // Apply Cube Rotation
-    		vertex = Rotator.rotateAroundYAxis(slice_angle, vertex);
+			// Determine Block Data
+			let slice_index = slice * config.SLICE_PARTICLES;
+			let slice_angle = pa[slice_index + block].slice_angle;
+			let block_position = pa[slice_index + block].position_final;
 
-    		// Add Vertex
-    		FINAL_VERTICES.push(cube_position[0] + vertex[0]);
-    		FINAL_VERTICES.push(cube_position[1] + vertex[1]);
-    		FINAL_VERTICES.push(cube_position[2] + vertex[2]);
-    	}
+			// Add Block Vertices
+			for (let v = 0; v < 8; v++) {
 
-    	// Add Cube Indices
-    	for (let position = 0; position < 36; position++) {
-    		FINAL_INDICES.push((slice * 24) + CUBE_INDICES[position]);
+				// Calculate Vertex Position
+				let vertex = [
+					BLOCK_VERTICES[(v * 3)] * .029,
+					BLOCK_VERTICES[(v * 3) + 1] * .0305235,
+					BLOCK_VERTICES[(v * 3) + 2] * .04845
+				];
+
+				// Apply Block Rotation
+				vertex = Rotator.rotateAroundYAxis(slice_angle, vertex);
+
+				// Add Vertex Locations
+				FINAL_VERTICES.push(block_position[0] + vertex[0]);
+				FINAL_VERTICES.push(block_position[1] + vertex[1]);
+				FINAL_VERTICES.push(block_position[2] + vertex[2]);
+			}
+
+			// Add Shared Vertex Indices for Block
+			for (let position = 0; position < 36; position++) {
+				FINAL_INDICES.push((slice * config.SLICE_PARTICLES + block) * 8 + BLOCK_INDICES[position]);
+			}
     	}
     }
 
+    /* VAO Construction */
+
 	// Create Vertex Array Object
-    vao_cube = gl.createVertexArray();
-    gl.bindVertexArray(vao_cube);
+    vao_blocks = gl.createVertexArray();
+    gl.bindVertexArray(vao_blocks);
 
     // Create Vertex Buffer
     vertex_buffer = gl.createBuffer()
@@ -668,16 +689,19 @@ function create_vertex_array_objects (pa) {
         gl.STATIC_DRAW
     );
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(prog_cube.uniforms.a_position);
+    gl.enableVertexAttribArray(prog_blocks.uniforms.a_position);
 
     // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
     vertex_element_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(FINAL_INDICES), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(FINAL_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
 }
+
+
+/*--- Buffer Setup ---*/
 
 function initialize_buffers (prog) {
 
@@ -728,8 +752,17 @@ function populate_buffers(pa) {
 
 function initialize_framebuffer_objects() {
 
-    // Enables float framebuffer color attachment
+    // Enables Float Framebuffer Color Attachment
     gl.getExtension('EXT_color_buffer_float');
+
+    // Enables Larger Index Buffer Size
+    // Note: By default, the index buffer size is limited to 16-bit, meaning the greatest
+    //       possible number of shared vertices in a single draw call is 65,536. This is
+    //       obviously far too few for this program. As an alternative to splitting up the
+    //       drawing of ring blocks into multiple draw calls, this line increases the size
+    //       limit to 32-bit, or an int. For more detail, see the Stack Overflow post below.
+    // Source: https://stackoverflow.com/questions/4998278/is-there-a-limit-of-vertices-in-webgl   
+    gl.getExtension('OES_element_index_uint');
 
     fbo_pos_initial = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
     fbo_pos_swerve = create_double_framebuffer_object(config.TEXTURE_SIZE, config.TEXTURE_SIZE, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
@@ -947,21 +980,23 @@ function draw_to_framebuffer_object (fbo) {
     gl.bindVertexArray(null);
 }
 
-function draw_cubes (g_proj_mat, g_view_mat, index) {
-    let program = prog_cube;
+function draw_blocks (g_proj_mat, g_view_mat, index) {
+    let program = prog_blocks;
     program.bind();
 
-    // Send Values to Shader
-    gl.uniformMatrix4fv(prog_cube.uniforms.u_proj_mat, false, g_proj_mat.elements);
-	gl.uniformMatrix4fv(prog_cube.uniforms.u_view_mat, false, g_view_mat.elements);
+    // Send Values to Block Shader
+    gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
+	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-	gl.bindVertexArray(vao_cube);
+	gl.bindVertexArray(vao_blocks);
 
-	// Draw Trangles Using 36 Vertices
-    gl.drawElements(gl.TRIANGLES, 36 * config.RING_SLICES, gl.UNSIGNED_SHORT, 0);
+	// Draw All Blocks Using Vertex Indices
+	let indices_per_block = 36;
+	let indices_to_draw = indices_per_block * config.SLICE_PARTICLES * config.RING_SLICES
+    gl.drawElements(gl.TRIANGLES, indices_to_draw, gl.UNSIGNED_INT, 0);
 
     gl.bindVertexArray(null);
 }
