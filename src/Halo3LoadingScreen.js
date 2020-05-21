@@ -40,6 +40,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
+    ENABLE_CUBE_RENDERING: false,              // Whether to render cubes 
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
@@ -62,7 +63,8 @@ let g_light_dir = new Vector3([0, 0.4, 0.6]);
 let g_model_mat = new Matrix4();
 let g_view_mat = new Matrix4();
 
-let vao_image;                  // vao for drawing image (using 2 triangles)
+let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
+let vao_cube;                   // VAO For Drawing Cube
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -70,6 +72,7 @@ let prog_particle;              // Particle Renderer
 let prog_display;               // FBO Renderer
 let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
+let prog_cube;                  // Cube Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -332,6 +335,39 @@ let frag_particle = `#version 300 es
 	}
 `;
 
+let vertex_cube = `#version 300 es
+
+    // Input Variables
+    in vec4 a_position;
+    uniform float index;
+    uniform mat4 u_proj_mat;
+	uniform mat4 u_model_mat;
+	uniform mat4 u_view_mat;
+
+	void main() {
+
+		// Local Variables
+		vec4 offset = vec4(0.2 * index, 0.0, 0.0, 0.0);
+
+		gl_Position = u_proj_mat * u_view_mat * (a_position + offset);
+    }
+`;
+
+let frag_cube = `#version 300 es
+	precision highp float;
+
+    // Output Variables
+	out vec4 cg_FragColor; 
+
+	void main() {
+
+		// Local Variables
+		vec3 color = vec3(0.51, 0.8, 1.0);
+
+        cg_FragColor = vec4(color.x, color.y, color.z, 0.1);
+	}
+`;
+
 /*--- Main Program ---*/
 
 function main () {
@@ -358,6 +394,7 @@ function main () {
     // Create Rendering Programs
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
+    prog_cube = new GLProgram(vertex_cube, frag_cube);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -392,7 +429,7 @@ function main () {
 	let pa = loadingParticleFactory.generateLoadingParticles();
 
     // Create Buffers (Define Input Coordinates for Shaders)
-   	create_vertex_buffer();
+   	create_vertex_array_objects();
    	initialize_buffers(prog_particle); 
 	populate_buffers(pa);
 
@@ -468,6 +505,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
+		if (config.ENABLE_CUBE_RENDERING) for (let x = 0; x < 3; x++) draw_cube(g_proj_mat, g_view_mat, x);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -517,12 +555,15 @@ class GLProgram {
 
 /*--- Buffer Setup ---*/
 
-// Note: This VertexArrayObject is used to draw to each square data texture.
-function create_vertex_buffer () {
+function create_vertex_array_objects () {
+
+    /* Data Texture VAO */
+
+    // Note: This VertexArrayObject is used to draw to each square data texture.
 
 	// Create Vertex Array Object
-    vao_image = gl.createVertexArray();
-    gl.bindVertexArray(vao_image);
+    vao_data_texture = gl.createVertexArray();
+    gl.bindVertexArray(vao_data_texture);
 
     // Create Vertex Buffer
     let vertex_buffer = gl.createBuffer()
@@ -545,6 +586,62 @@ function create_vertex_buffer () {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
     // Note: Six vertices representing two triangles with a shared edge from bottom left to top right 
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
+
+
+    /* Cube VAO */
+
+    // Note: This VertexArrayObject is used to draw each cube.
+
+	// Create a cube
+	//    v6----- v5
+	//   /|      /|
+	//  v1------v0|
+	//  | |     | |
+	//  | |v7---|-|v4
+	//  |/      |/
+	//  v2------v3
+     var CUBE_VERTICES = [
+		 .1, .1, .1,
+		-.1, .1, .1,
+		-.1,-.1, .1,
+		 .1,-.1, .1,
+		 .1,-.1,-.1,
+		 .1, .1,-.1,
+		-.1, .1,-.1,
+		-.1,-.1,-.1
+	  ];
+
+	  var CUBE_INDICES = new Uint8Array([
+		0, 1, 2,   0, 2, 3,    // front
+		0, 3, 4,   0, 4, 5,    // right
+		0, 5, 6,   0, 6, 1,    // up
+		1, 6, 7,   1, 7, 2,    // left
+		7, 4, 3,   7, 3, 2,    // down
+		4, 7, 6,   4, 6, 5     // back
+	 ]);
+
+	// Create Vertex Array Object
+    vao_cube = gl.createVertexArray();
+    gl.bindVertexArray(vao_cube);
+
+    // Create Vertex Buffer
+    vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array(CUBE_VERTICES),
+        gl.STATIC_DRAW
+    );
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_cube.uniforms.a_position);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(CUBE_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
@@ -809,12 +906,32 @@ function update_particle_data (position, data_dynamic, data_static) {
 
 function draw_to_framebuffer_object (fbo) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  	gl.bindVertexArray(vao_image);
+  	gl.bindVertexArray(vao_data_texture);
     
     // Draw Trangles Using 6 Vertices
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
 
     // Unbind
+    gl.bindVertexArray(null);
+}
+
+function draw_cube (g_proj_mat, g_view_mat, index) {
+    let program = prog_cube;
+    program.bind();
+
+    // Send Values to Shader
+    gl.uniformMatrix4fv(prog_cube.uniforms.u_proj_mat, false, g_proj_mat.elements);
+	gl.uniformMatrix4fv(prog_cube.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1f(program.uniforms.index, index);
+	
+	gl.viewport(0, 0, canvas.width, canvas.height);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.bindVertexArray(vao_cube);
+
+	// Draw Trangles Using 36 Vertices
+    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+
     gl.bindVertexArray(null);
 }
 
