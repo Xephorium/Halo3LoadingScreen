@@ -13,7 +13,8 @@ class Rotator {
     /*--- "Public" Rotation Method ---*/
 
     static rotateAroundYAxis(angle, point) {
-        return this.multiplyMatrixAndPoint(this.getYRotationMatrix(angle), point);
+        let a = (angle * Math.PI) / 180;
+        return this.multiplyMatrixAndPoint(this.getYRotationMatrix(a), point);
     }
 
     

@@ -25,5 +25,6 @@
         this.brightness = 1;
         this.seed = 0;
         this.ambient = 0;
+        this.slice_angle = 0;
     }
  }

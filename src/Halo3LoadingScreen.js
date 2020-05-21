@@ -360,7 +360,7 @@ let frag_cube = `#version 300 es
 		// Local Variables
 		vec3 color = vec3(0.51, 0.8, 1.0);
 
-        cg_FragColor = vec4(color.x, color.y, color.z, 0.1);
+        cg_FragColor = vec4(color.x, color.y, color.z, 0.05);
 	}
 `;
 
@@ -625,24 +625,23 @@ function create_vertex_array_objects (pa) {
     let FINAL_INDICES = [];
     for (let slice = 0; slice < config.RING_SLICES * 3; slice++) {
 
-    	// Determine Cube Position
+    	// Determine Particle Data
     	let cube_position = pa[slice * (config.SLICE_PARTICLES / 3)].position_final;
+    	let slice_angle = pa[slice * (config.SLICE_PARTICLES / 3)].slice_angle;
 
     	// Add Cube Vertices
     	for (let v = 0; v < 8; v++) {
 
     		// Calculate Vertex Position
+    		let cube_scale_factor = .04845;
     		let vertex = [
-    		    CUBE_VERTICES[(v * 3)] * .03,
-    		    CUBE_VERTICES[(v * 3) + 1] * .03,
-                CUBE_VERTICES[(v * 3) + 2] * .03
+    		    CUBE_VERTICES[(v * 3)] * cube_scale_factor,
+    		    CUBE_VERTICES[(v * 3) + 1] * cube_scale_factor,
+                CUBE_VERTICES[(v * 3) + 2] * cube_scale_factor
     		];
             
-            // Calculate Angle
-            let angle = ((slice / 3) / config.RING_SLICES) * 360;
-            console.log(angle);
-
-    		vertex = Rotator.rotateAroundYAxis(angle, vertex);
+            // Apply Cube Rotation
+    		vertex = Rotator.rotateAroundYAxis(slice_angle, vertex);
 
     		// Add Vertex
     		FINAL_VERTICES.push(cube_position[0] + vertex[0]);

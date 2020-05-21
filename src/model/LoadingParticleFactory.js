@@ -90,6 +90,9 @@
 
         // Generate Seed
         p.seed = Math.max(this.better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
+
+        // Generate Slice Angle
+        p.slice_angle = 180 - ((slice / config.RING_SLICES) * 360);
     }
 
     initialize_ambient_particle (p) {
@@ -253,6 +256,7 @@
         new_particle.wait = p.wait;
         new_particle.seed = Math.max(this.better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
         new_particle.ambient = p.ambient;
+        new_particle.slice_angle = -p.slice_angle;
 
         return new_particle;
     }
