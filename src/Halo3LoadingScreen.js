@@ -297,7 +297,7 @@ let vertex_particle = `#version 300 es
 
         // Scale Up Ambient Particles
         float ambient_particle_scale = 2.5;
-        float active_particle_scale = .25;
+        float active_particle_scale = 1.5;
         if (ambient == 1.0) {
         	gl_PointSize += gl_PointSize * ambient_particle_scale;
         } else {
@@ -328,13 +328,16 @@ let frag_particle = `#version 300 es
 		vec3 color = vec3(0.51, 0.8, 1.0);
 
         // Calculate Particle Transparency
-		if (ambient == 1.0) {
-			vec2 location = (gl_PointCoord - 0.5) * 2.0;
-			float distance = (1.0 - sqrt(location.x * location.x + location.y * location.y));
-			cg_FragColor = vec4(color.x, color.y, color.z, alpha * (distance / 3.5));
-		} else {
-			cg_FragColor = vec4(color.x, color.y, color.z, alpha);
-		}
+		vec2 location = (gl_PointCoord - 0.5) * 2.0;
+		float distance = (1.0 - sqrt(location.x * location.x + location.y * location.y));
+		float alpha_final = alpha * (distance / 3.5);
+ 		
+ 		// Boost Alpha for Ring Particles
+        if (ambient != 1.0) {
+        	alpha_final = min(alpha_final * 4.0, 1.0);
+        }
+
+        cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
 	}
 `;
 
@@ -362,8 +365,9 @@ let frag_blocks = `#version 300 es
 
 		// Local Variables
 		vec3 color = vec3(0.51, 0.8, 1.0);
+		float block_alpha = 0.05;
 
-        cg_FragColor = vec4(color.x, color.y, color.z, 0.05);
+        cg_FragColor = vec4(color.x, color.y, color.z, block_alpha);
 	}
 `;
 
