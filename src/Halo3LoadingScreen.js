@@ -626,13 +626,28 @@ function create_vertex_array_objects (pa) {
     for (let slice = 0; slice < config.RING_SLICES * 3; slice++) {
 
     	// Determine Cube Position
-    	let cube_position = pa[slice * (config.SLICE_PARTICLES/3)].position_final;
+    	let cube_position = pa[slice * (config.SLICE_PARTICLES / 3)].position_final;
 
     	// Add Cube Vertices
-    	for (let vertex = 0; vertex < 8; vertex++) {
-    		FINAL_VERTICES.push(cube_position[0] + (CUBE_VERTICES[(vertex * 3)] * .03));
-    		FINAL_VERTICES.push(cube_position[1] + (CUBE_VERTICES[(vertex * 3) + 1] * .03));
-    		FINAL_VERTICES.push(cube_position[2] + (CUBE_VERTICES[(vertex * 3) + 2] * .03));
+    	for (let v = 0; v < 8; v++) {
+
+    		// Calculate Vertex Position
+    		let vertex = [
+    		    CUBE_VERTICES[(v * 3)] * .03,
+    		    CUBE_VERTICES[(v * 3) + 1] * .03,
+                CUBE_VERTICES[(v * 3) + 2] * .03
+    		];
+            
+            // Calculate Angle
+            let angle = ((slice / 3) / config.RING_SLICES) * 360;
+            console.log(angle);
+
+    		vertex = Rotator.rotateAroundYAxis(angle, vertex);
+
+    		// Add Vertex
+    		FINAL_VERTICES.push(cube_position[0] + vertex[0]);
+    		FINAL_VERTICES.push(cube_position[1] + vertex[1]);
+    		FINAL_VERTICES.push(cube_position[2] + vertex[2]);
     	}
 
     	// Add Cube Indices
