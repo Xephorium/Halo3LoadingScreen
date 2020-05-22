@@ -14,6 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
+	SPEED: 1.0,                                // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -36,7 +37,7 @@ let config = {
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2.4,
-    PARTICLE_WAIT_VARIATION: 250,              // Amount of random flux in particle wait
+    PARTICLE_WAIT_VARIATION: 400,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
@@ -297,7 +298,7 @@ let vertex_particle = `#version 300 es
 
         // Scale Particles Based on Role
         float ambient_particle_scale = 2.5;
-        float active_particle_scale = 1.5;
+        float active_particle_scale = 1.0;
         if (ambient == 1.0) {
         	gl_PointSize += gl_PointSize * ambient_particle_scale;
         } else {
@@ -334,7 +335,7 @@ let frag_particle = `#version 300 es
  		
  		// Boost Alpha for Ring Particles
         if (ambient != 1.0) {
-        	alpha_final = min(alpha_final * 4.0, 1.0);
+        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.7;
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
@@ -344,19 +345,36 @@ let frag_particle = `#version 300 es
 let vertex_blocks = `#version 300 es
 
     // Input Variables
-    in vec4 a_position;
+    in vec4 vertex_position;
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
 
+    // Output Variables
+    out float particle_wait;
+
 	void main() {
 
-		gl_Position = u_proj_mat * u_view_mat * a_position;
+        // Local Variables
+        vec4 position = vec4(vertex_position[0], vertex_position[1], vertex_position[2], 1.0);
+
+        // Calculate Vertex Position & Pass Visibility
+		gl_Position = u_proj_mat * u_view_mat * position;
+		particle_wait = vertex_position[3];
     }
 `;
 
 let frag_blocks = `#version 300 es
 	precision highp float;
+
+    // Input Variables
+    in float particle_wait;
+    uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_particle_fade;
+	uniform float length_scene_fade;
 
     // Output Variables
 	out vec4 cg_FragColor; 
@@ -364,8 +382,14 @@ let frag_blocks = `#version 300 es
 	void main() {
 
 		// Local Variables
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
 		vec3 color = vec3(0.51, 0.8, 1.0);
-		float block_alpha = 0.05;
+
+        // Calculate Block Alpha
+        float block_alpha = 0.0;
+        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly; 
+		if (delay_time > appearance_time) block_alpha = 0.05;
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha);
 	}
@@ -474,7 +498,7 @@ function main () {
 	let update = function() {
 
 		// Update Time
-		time = performance.now() - start_time;
+		time = (performance.now() - start_time) * config.SPEED;
 		
         // Clear Canvas
 		gl.clear(gl.COLOR_BUFFER_BIT);
@@ -632,12 +656,19 @@ function create_ring_block_vertex_array_object (pa) {
 
     /* Block Generation Code */
 
-    // Note: This block generates the vertices for every block in the constructed 
-    //       ring. It also generates an array containing indices that specify which
-    //       vertices of each block are shared.
-    // 
-    //       Total Vertices = Blocks * 8
-    //       Total Indices = Blocks * 36
+    /* Note: This section generates the vertices for every block in the constructed 
+     *       ring as a triple [X, Y, Z] representing coordinades in 3D space. It then
+     *       appends a fourth constant to each vertex W, representing the wait value
+     *       of the particle corresponding to that vertex. This value is used to toggle
+     *       block's visibility during rendering in the fragment shader. The section
+     *       also generates an array containing indices that specify which vertices of
+     *       each block are shared. Finally, both arrays are stored as buffer data for
+     *       processing in the vertex shader.
+     * 
+     *       Total Vertices:           Blocks * 8
+     *       Total Indices:            Blocks * 36
+     *       Block Vertex Structure:   [X, Y, Z, Wait]
+     */
     let FINAL_VERTICES = [];
     let FINAL_INDICES = [];
 
@@ -651,6 +682,7 @@ function create_ring_block_vertex_array_object (pa) {
 			let slice_index = slice * config.SLICE_PARTICLES;
 			let slice_angle = pa[slice_index + block].slice_angle;
 			let block_position = pa[slice_index + block].position_final;
+			let block_visibility_offset = pa[slice_index + block].wait;
 
 			// Add Block Vertices
 			for (let v = 0; v < 8; v++) {
@@ -669,6 +701,7 @@ function create_ring_block_vertex_array_object (pa) {
 				FINAL_VERTICES.push(block_position[0] + vertex[0]);
 				FINAL_VERTICES.push(block_position[1] + vertex[1]);
 				FINAL_VERTICES.push(block_position[2] + vertex[2]);
+				FINAL_VERTICES.push(block_visibility_offset);
 			}
 
 			// Add Shared Vertex Indices for Block
@@ -692,8 +725,8 @@ function create_ring_block_vertex_array_object (pa) {
         new Float32Array(FINAL_VERTICES),
         gl.STATIC_DRAW
     );
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(prog_blocks.uniforms.a_position);
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_blocks.uniforms.vertex_position);
 
     // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
     vertex_element_buffer = gl.createBuffer();
@@ -991,6 +1024,12 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     // Send Values to Block Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
+    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
