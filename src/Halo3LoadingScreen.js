@@ -254,7 +254,7 @@ let frag_data = `#version 300 es
 
 			// All Particles - Scene Fade Out
 			float scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
-			alpha = scene_fade_out_factor * alpha_scale;
+			alpha = ambient * scene_fade_out_factor * alpha_scale;
 
 		} else if (ambient == 1.0) {
 
@@ -349,7 +349,7 @@ let frag_particle = `#version 300 es
 		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
-		vec3 color = vec3(0.51, 0.8, 1.0);
+		vec3 color = vec3(0.30, 0.67, 0.86);
 
         // Calculate Particle Transparency
 		vec2 location = (gl_PointCoord - 0.5) * 2.0;
@@ -358,7 +358,7 @@ let frag_particle = `#version 300 es
  		
  		// Boost Alpha
         if (ambient != 1.0) {
-        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.7;
+        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.85;
         } else {
         	alpha_final = min(alpha_final * 1.2, 0.8);
         }
@@ -377,6 +377,7 @@ let vertex_blocks = `#version 300 es
 
     // Output Variables
     out float particle_wait;
+    out float block_vertical_factor;
 
 	void main() {
 
@@ -386,6 +387,7 @@ let vertex_blocks = `#version 300 es
         // Calculate Vertex Position & Pass Visibility
 		gl_Position = u_proj_mat * u_view_mat * position;
 		particle_wait = vertex_position[3];
+		block_vertical_factor = max(abs(vertex_position[1] / 0.0575), 0.5) * 1.1;
     }
 `;
 
@@ -394,6 +396,7 @@ let frag_blocks = `#version 300 es
 
     // Input Variables
     in float particle_wait;
+    in float block_vertical_factor;
     uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -410,17 +413,24 @@ let frag_blocks = `#version 300 es
 		// Local Variables
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
-		vec3 color = vec3(0.51, 0.8, 1.0);
+		float scene_fade_out_factor = 1.0;
+		vec3 color = vec3(0.30, 0.67, 0.86);
 
         // Calculate Block Alpha
         float block_alpha = 0.0;
-        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly; 
+        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly;
+
+        // Account for Fade Out
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
+
 		if (delay_time > appearance_time) {
 			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
 			block_alpha = block_fade_factor * 0.05;
 		}
 
-        cg_FragColor = vec4(color.x, color.y, color.z, block_alpha);
+        cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
 	}
 `;
 
@@ -441,7 +451,6 @@ function main () {
         config.BACKGROUND_COLOR[2],
         config.BACKGROUND_COLOR[3]);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -1051,6 +1060,9 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     let program = prog_blocks;
     program.bind();
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    //gl.blendColor(0.51, 0.8, 1.0, 0.02);
+
     // Send Values to Block Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
@@ -1072,12 +1084,16 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
 	let indices_to_draw = indices_per_block * config.SLICE_PARTICLES * config.RING_SLICES
     gl.drawElements(gl.TRIANGLES, indices_to_draw, gl.UNSIGNED_INT, 0);
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
     gl.bindVertexArray(null);
 }
 
 function draw_particles (position, data_dynamic, data_static, pa) {
     let program = prog_particle;
     program.bind();
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
 
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
@@ -1088,4 +1104,6 @@ function draw_particles (position, data_dynamic, data_static, pa) {
 	gl.viewport(0, 0, canvas.width, canvas.height);
 
 	gl.drawArrays(gl.POINTS, 0, pa.length);
+
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
