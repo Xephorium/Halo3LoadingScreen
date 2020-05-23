@@ -22,6 +22,7 @@ let config = {
 	LENGTH_SLICE_ASSEMBLY: 25,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 80,
+	LENGTH_BLOCK_HIGHLIGHT: 1100,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
@@ -403,6 +404,7 @@ let frag_blocks = `#version 300 es
 	uniform float length_slice_assembly;
 	uniform float length_particle_fade;
 	uniform float length_block_fade;
+	uniform float length_block_highlight;
 	uniform float length_scene_fade;
 
     // Output Variables
@@ -414,20 +416,29 @@ let frag_blocks = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float scene_fade_out_factor = 1.0;
-		vec3 color = vec3(0.30, 0.67, 0.86);
+		vec3 color_base = vec3(0.30, 0.67, 0.86);
+		vec3 color_bright = vec3(0.6, 0.9, 1.0);
+		vec3 color = color_base;
 
         // Calculate Block Alpha
         float block_alpha = 0.0;
         float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly;
 
-        // Account for Fade Out
+        // Account for Loop Fade Out
         if (delay_time > length_loop - length_scene_fade) {
             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
         }
 
 		if (delay_time > appearance_time) {
+
+			// Adjust Alpha for Fade In 
 			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
 			block_alpha = block_fade_factor * 0.05;
+
+			// Adjust Color for Highlight
+			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
+			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
+			color = mix(color_bright, color_base, block_highlight_factor);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
@@ -1072,6 +1083,7 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
     gl.uniform1f(program.uniforms.length_block_fade, config.LENGTH_BLOCK_FADE);
+    gl.uniform1f(program.uniforms.length_block_highlight, config.LENGTH_BLOCK_HIGHLIGHT);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
