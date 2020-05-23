@@ -21,6 +21,7 @@ let config = {
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
 	LENGTH_SLICE_ASSEMBLY: 25,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
+	LENGTH_BLOCK_FADE: 80,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
@@ -210,6 +211,7 @@ let frag_data = `#version 300 es
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
+	uniform float length_slice_assembly;
 	uniform float length_particle_fade;
 	uniform float length_scene_fade;
 	uniform float camera_dist_max;
@@ -249,13 +251,34 @@ let frag_data = `#version 300 es
         // Calculate & Set Alpha
         alpha = 0.0;
 		if (delay_time > length_loop - length_scene_fade) {
-			alpha = max((length_loop - delay_time) / length_scene_fade, 0.0) * alpha_scale;
-		} else if (delay_time > wait) {
-			alpha = min((delay_time - wait) / length_particle_fade, 1.0) * alpha_scale;
-		}
 
-		// Override Alpha
-		//alpha = 0.0;
+			// All Particles - Scene Fade Out
+			float scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+			alpha = scene_fade_out_factor * alpha_scale;
+
+		} else if (ambient == 1.0) {
+
+			// Ambient Particles
+			float scene_fade_in_factor = min(delay_time / length_particle_fade, 1.0);
+			alpha = scene_fade_in_factor * alpha_scale;
+
+		} else if (delay_time > wait) {
+
+			// Assembly Particles
+
+			// Calculate Fade In Factor
+			float particle_fade_in_factor = min((delay_time - wait) / length_particle_fade, 1.0);
+
+            // Calculate Fade Out Factor
+            float animation_complete = wait + length_scene_fade + length_start_delay + length_slice_assembly;
+            float particle_fade_out_factor = 1.0;
+            if (delay_time > animation_complete) {
+				particle_fade_out_factor = max(1.0 - ((delay_time - animation_complete) / length_particle_fade), 0.0);
+			}
+
+            // Apply Alpha
+			alpha = particle_fade_in_factor * particle_fade_out_factor * alpha_scale;
+		}
 		    
         cg_FragColor = vec4(alpha, brightness, 1.0, 1.0);
 	}	
@@ -333,9 +356,11 @@ let frag_particle = `#version 300 es
 		float distance = (1.0 - sqrt(location.x * location.x + location.y * location.y));
 		float alpha_final = alpha * (distance / 3.5);
  		
- 		// Boost Alpha for Ring Particles
+ 		// Boost Alpha
         if (ambient != 1.0) {
         	alpha_final = min(alpha_final * 4.0, 1.0) * 0.7;
+        } else {
+        	alpha_final = min(alpha_final * 1.2, 0.8);
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
@@ -374,6 +399,7 @@ let frag_blocks = `#version 300 es
 	uniform float length_start_delay;
 	uniform float length_slice_assembly;
 	uniform float length_particle_fade;
+	uniform float length_block_fade;
 	uniform float length_scene_fade;
 
     // Output Variables
@@ -389,7 +415,10 @@ let frag_blocks = `#version 300 es
         // Calculate Block Alpha
         float block_alpha = 0.0;
         float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly; 
-		if (delay_time > appearance_time) block_alpha = 0.05;
+		if (delay_time > appearance_time) {
+			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
+			block_alpha = block_fade_factor * 0.05;
+		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha);
 	}
@@ -994,6 +1023,7 @@ function update_particle_data (position, data_dynamic, data_static) {
     gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
     gl.uniform1f(program.uniforms.camera_dist_max, config.CAMERA_DIST_MAX);
@@ -1029,6 +1059,7 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_particle_fade, config.LENGTH_PARTICLE_FADE);
+    gl.uniform1f(program.uniforms.length_block_fade, config.LENGTH_BLOCK_FADE);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
