@@ -98,12 +98,12 @@
     initialize_ambient_particle (p) {
 
         // Generate Initial Position
-        p.position_initial[0] = this.better_random() * this.config.AMBIENT_WIDTH;
+        p.position_initial[0] = this.better_random() * this.config.AMBIENT_WIDTH + 0.7;
         p.position_initial[1] = this.better_random() * this.config.AMBIENT_HEIGHT;
-        p.position_initial[2] = this.better_random() * this.config.AMBIENT_WIDTH;
+        p.position_initial[2] = this.better_random() * (this.config.AMBIENT_WIDTH * 0.8) - 0.5;
 
         // Generate Final Position
-        p.position_final[0] = this.better_random() * this.config.AMBIENT_DRIFT;
+        p.position_final[0] = (this.better_random() - 1.5) * this.config.AMBIENT_DRIFT;
         p.position_final[1] = this.better_random() * this.config.AMBIENT_DRIFT;
         p.position_final[2] = this.better_random() * this.config.AMBIENT_DRIFT;
 

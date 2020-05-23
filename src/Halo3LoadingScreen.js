@@ -14,14 +14,14 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.0,                                // Speed of animation
+	SPEED: 1.1,                                // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
 	LENGTH_SLICE_ASSEMBLY: 23,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
-	LENGTH_BLOCK_FADE: 80,
+	LENGTH_BLOCK_FADE: 65,
 	LENGTH_BLOCK_HIGHLIGHT: 1100,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -30,7 +30,7 @@ let config = {
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
     AMBIENT_PARTICLES: 20000,
-    AMBIENT_WIDTH: 4,                          // Horizontal area in which ambient particles are rendered
+    AMBIENT_WIDTH: 5,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 1.2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
     SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
@@ -327,7 +327,7 @@ let vertex_particle = `#version 300 es
 
         // Scale Particles Based on Role
         float ambient_particle_scale = 2.5;
-        float active_particle_scale = 1.0;
+        float active_particle_scale = 1.15;
         if (ambient == 1.0) {
         	gl_PointSize += gl_PointSize * ambient_particle_scale;
         } else {
@@ -364,7 +364,7 @@ let frag_particle = `#version 300 es
  		
  		// Boost Alpha
         if (ambient != 1.0) {
-        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.85;
+        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.55;
         } else {
         	alpha_final = min(alpha_final * 1.2, 0.8);
         }
@@ -393,7 +393,7 @@ let vertex_blocks = `#version 300 es
         // Calculate Vertex Position & Pass Visibility
 		gl_Position = u_proj_mat * u_view_mat * position;
 		particle_wait = vertex_position[3];
-		block_vertical_factor = max(abs(vertex_position[1] / 0.0575), 0.5) * 1.1;
+		block_vertical_factor = min(max(abs(vertex_position[1] / 0.04), 0.66) * 1.1, 1.1);
     }
 `;
 
@@ -421,7 +421,7 @@ let frag_blocks = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float scene_fade_out_factor = 1.0;
-		vec3 color_base = vec3(0.28, 0.65, 0.88);
+		vec3 color_base = vec3(0.28, 0.678, 0.86);
 		vec3 color_bright = vec3(0.6, 0.9, 1.0);
 		vec3 color = color_base;
 
@@ -436,7 +436,7 @@ let frag_blocks = `#version 300 es
 
 		if (delay_time > appearance_time) {
 
-			// Adjust Alpha for Fade In 
+			// Adjust Alpha for Fade In
 			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
 			block_alpha = block_fade_factor * 0.05;
 
@@ -444,6 +444,9 @@ let frag_blocks = `#version 300 es
 			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
 			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
 			color = mix(color_bright, color_base, block_highlight_factor);
+
+			// Adjust Alpha for Highlight
+			block_alpha += ((1.0 - block_highlight_factor) / 50.0);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
@@ -483,9 +486,9 @@ function main () {
     if (config.ENABLE_DEVELOPER_CAMERA) {
 
     	// Define Developer Camera Position
-        camera_pos[0] = -3.3;
-        camera_pos[1] = .1;//.3;
-        camera_pos[2] = .3;//4.9;
+        camera_pos[0] = 0.0;
+        camera_pos[1] = .3;
+        camera_pos[2] = 4.9;
 
         // Define Developer Camera View Matrix
     	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
