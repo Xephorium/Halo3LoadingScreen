@@ -19,7 +19,7 @@ let config = {
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
-	LENGTH_SLICE_ASSEMBLY: 25,
+	LENGTH_SLICE_ASSEMBLY: 23,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 80,
 	LENGTH_BLOCK_HIGHLIGHT: 1100,
@@ -251,7 +251,12 @@ let frag_data = `#version 300 es
 
         // Calculate & Set Alpha
         alpha = 0.0;
-		if (delay_time > length_loop - length_scene_fade) {
+        if (delay_time <= 0.0) {
+
+        	// Scene Hasn't Started
+        	alpha = 0.0;
+        	
+        } else if (delay_time > length_loop - length_scene_fade) {
 
 			// All Particles - Scene Fade Out
 			float scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
@@ -350,7 +355,7 @@ let frag_particle = `#version 300 es
 		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
-		vec3 color = vec3(0.30, 0.67, 0.86);
+		vec3 color = vec3(0.34, 0.75, 1.0);
 
         // Calculate Particle Transparency
 		vec2 location = (gl_PointCoord - 0.5) * 2.0;
@@ -416,7 +421,7 @@ let frag_blocks = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float scene_fade_out_factor = 1.0;
-		vec3 color_base = vec3(0.30, 0.67, 0.86);
+		vec3 color_base = vec3(0.28, 0.65, 0.88);
 		vec3 color_bright = vec3(0.6, 0.9, 1.0);
 		vec3 color = color_base;
 
