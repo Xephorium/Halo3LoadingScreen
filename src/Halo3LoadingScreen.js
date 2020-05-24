@@ -33,7 +33,7 @@ let config = {
     AMBIENT_WIDTH: 5,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 1.2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
-    SLICE_PARTICLES: 66,                       // Must be even & match particle offset generation function below
+    SLICE_PARTICLES: 62,                       // Must be even & match particle offset generation function below
     SLICE_SIZE: 0.006,                         // Distance between slice particles
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
@@ -446,7 +446,7 @@ let frag_blocks = `#version 300 es
 			color = mix(color_bright, color_base, block_highlight_factor);
 
 			// Adjust Alpha for Highlight
-			block_alpha += ((1.0 - block_highlight_factor) / 50.0);
+			block_alpha += ((1.0 - block_highlight_factor) / 38.0);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);

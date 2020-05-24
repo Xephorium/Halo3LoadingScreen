@@ -155,24 +155,24 @@
          * //// Slice Shape Diagram ////
          * /////////////////////////////
          * 
-         * Total Particles: 66
-         * Half Particles: 33
+         * Total Particles: 62
+         * Half Particles: 31
          * 
-         *             7 8 9
-         *             6 . 0
-         *         3 4 5 . 1
-         *         2 . . . 2
-         *     9 0 1 . . . 3
-         *     8 . . . . . 4
-         *     7 . . . . . 5
-         *     6 . . . . . 6
-         *     5 . . . . . 7
-         *     4 . . . . . 8
-         *     3 . . . . . 9
-         *     2 . . . . . 0
-         *     1 . . . . . 1
-         *     0 . . . . . 2
-         *     ------x------
+         *         5 6 7
+         *         4 . 8
+         *       2 3 . 9
+         *       1 . . 0
+         *     9 0 . . 1
+         *     8 . . . 2
+         *     7 . . . 3
+         *     6 . . . 4
+         *     5 . . . 5
+         *     4 . . . 6
+         *     3 . . . 7
+         *     2 . . . 8
+         *     1 . . . 9
+         *     0 . . . 0
+         *     ----x----
          */
 
         // Note: Table contains the offset from slice center (x) of
@@ -182,39 +182,37 @@
         let sign = p >= (this.config.SLICE_PARTICLES / 2) ? -1 : 1;
         let offset = [0.0, 0.0];
         switch(particle) {
-            case  0: offset = [-3,  1]; break;
-            case  1: offset = [-3,  2]; break;
-            case  2: offset = [-3,  3]; break;
-            case  3: offset = [-3,  4]; break;
-            case  4: offset = [-3,  5]; break;
-            case  5: offset = [-3,  6]; break;
-            case  6: offset = [-3,  7]; break;
-            case  7: offset = [-3,  8]; break;
-            case  8: offset = [-3,  9]; break;
-            case  9: offset = [-3, 10]; break;
-            case 10: offset = [-2, 10]; break;
-            case 11: offset = [-1, 10]; break;
-            case 12: offset = [-1, 11]; break;
-            case 13: offset = [-1, 12]; break;
-            case 14: offset = [ 0, 12]; break;
-            case 15: offset = [ 1, 12]; break;
-            case 16: offset = [ 1, 13]; break;
-            case 17: offset = [ 1, 14]; break;
-            case 18: offset = [ 2, 14]; break;
-            case 19: offset = [ 3, 14]; break;
-            case 20: offset = [ 3, 13]; break;
-            case 21: offset = [ 3, 12]; break;
-            case 22: offset = [ 3, 11]; break;
-            case 23: offset = [ 3, 10]; break;
-            case 24: offset = [ 3,  9]; break;
-            case 25: offset = [ 3,  8]; break;
-            case 26: offset = [ 3,  7]; break;
-            case 27: offset = [ 3,  6]; break;
-            case 28: offset = [ 3,  5]; break;
-            case 29: offset = [ 3,  4]; break;
-            case 30: offset = [ 3,  3]; break;
-            case 31: offset = [ 3,  2]; break;
-            case 32: offset = [ 3,  1]; break;
+            case  0: offset = [-2,  1]; break;
+            case  1: offset = [-2,  2]; break;
+            case  2: offset = [-2,  3]; break;
+            case  3: offset = [-2,  4]; break;
+            case  4: offset = [-2,  5]; break;
+            case  5: offset = [-2,  6]; break;
+            case  6: offset = [-2,  7]; break;
+            case  7: offset = [-2,  8]; break;
+            case  8: offset = [-2,  9]; break;
+            case  9: offset = [-2, 10]; break;
+            case 10: offset = [-1, 10]; break;
+            case 11: offset = [-1, 11]; break;
+            case 12: offset = [-1, 12]; break;
+            case 13: offset = [ 0, 12]; break;
+            case 14: offset = [ 0, 13]; break;
+            case 15: offset = [ 0, 14]; break;
+            case 16: offset = [ 1, 14]; break;
+            case 17: offset = [ 2, 14]; break;
+            case 18: offset = [ 2, 13]; break;
+            case 19: offset = [ 2, 12]; break;
+            case 20: offset = [ 2, 11]; break;
+            case 21: offset = [ 2, 10]; break;
+            case 22: offset = [ 2,  9]; break;
+            case 23: offset = [ 2,  8]; break;
+            case 24: offset = [ 2,  7]; break;
+            case 25: offset = [ 2,  6]; break;
+            case 26: offset = [ 2,  5]; break;
+            case 27: offset = [ 2,  4]; break;
+            case 28: offset = [ 2,  3]; break;
+            case 29: offset = [ 2,  2]; break;
+            case 30: offset = [ 2,  1]; break;
             default: break;
         }
 
