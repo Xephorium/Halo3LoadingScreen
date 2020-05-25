@@ -110,43 +110,66 @@ Data Static
   }
 
 
-/*--- Painful Lessons ---*/
-
-> JavaScript's decimal math is broken. Any operation that would suffer from unpredictable
-  rounding errors should make use of an external library. In this project, I use decimal.js.
-
-> Even if no operation is performed on a given frame buffer object, its values will
-  subtly change over time when returned from a shader. I spent about four hours pulling
-  my hair out trying to discern why each particle's unchanging wait value became more
-  random over the course of each simulation. This is why.
-
-
 /*--- Dev Diary ---*/
 
-Slice Particle Positions
+05.04.2020
+  I've rediscovered while working on particle position calculation that JavaScript's decimal
+  math is broken. Any operation that would suffer from unpredictable rounding errors should
+  make use of an external library. For this project, I've decided on decimal.js.
+
+05.04.2020
+  Fun fact: even if no operation is performed on a frame buffer object, its values
+  will subtly change over time when run through a shader. I spent about four hours pulling
+  my hair out today trying to discern why each particle's unaltered wait value became more
+  random over the course of each simulation. This is why.
+
+05.08.2020
   After two days and an accidental all-nighter, I've been unable to derive a bug-free
   algorithm that generates final particle positions for each slice given a variable
   particle count per slice. But even if I had figured it out, the approach would have
-  had a few drawbacks. For one, it's verbose. My current imperfect implementation comes
+  had a few drawbacks. For one, it's verbose. My current buggy implementation comes
   out at ~100 lines of obscure calculations. The algorithm also would have restricted
   slices to a rectangular shape, which is artistically inflexible and doesn't match the
   original animation. For these reasons, I've decided to take a more literal approach
-  moving forward. Rather than a complex generation system, I'd like to just write a
-  method that returns hard coded position offsets for each slice particle. It's not
-  sophisticated. But it is flexible, bug-proof, and can be changed in about 10 minutes
-  with paper and pencil.
+  moving forward. Rather than a complex generation system, I'll just write a method that
+  returns hard coded position offsets for each slice particle. It's not sophisticated.
+  But it is flexible, bug-proof, and can be changed in about 10 minutes with paper and
+  pencil.
 
-Camera Movement Animation
-  In previous projects that required smooth position animation, I've spent time deriving
-  trig equations that trace the desired path as closely as possible. It's a relatively
-  quick fix, but results in a mathematical mess that's impossible to read or change later.
-  Even if I didn't mind the mess, the camera animation in this project is just too complex
-  for the approach to be reasonable. So, it's time to learn splines! The quadratic spline
-  interpolator above is great, but it's hard to imagine having more flexibility than a
-  method that takes (locations[], factor) and returns a point in 3D space. Some resources
-  I've gathered in early research:
-
+05.08.2020
+  Particle animation is complete! Next up is proper camera movement. In previous projects
+  that required smooth position animation, I've spent time deriving trig equations that 
+  trace the desired path as closely as possible. It's a relatively quick fix, but results
+  in a mathematical mess that's impossible to read or change later. Even if I didn't mind
+  the mess, the camera animation in this project is just too complex for the approach to
+  be reasonable. So, it's time to learn splines! The three point interpolator I found for
+  particle animation is a great start. But, it's hard to imagine having more flexibility
+  than a method that takes (locations[], factor) and returns a point in 3D space. Some
+  resources I've gathered in early research:
+  UCLA Paper: https://www.math.ucla.edu/~baker/149.1.02w/handouts/dd_splines.pdf
   The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html
+
+05.15.2020
+  To make the process of learning spline interpolation a bit more fun, I ended up building a
+  pretty cool litte realtime demo in Java: https://github.com/Xephorium/SplineInterpolator
+
+05.23.2020
+  Just realized the slice shape used until now is wider than in the original animation. It
+  took all of five minutes to update without pencil or paper. Very grateful for the constant
+  offset approach. :) 
+
+05.25.2020
+  While stumbling through the refactor to texture each ring block, I've discovered a pretty
+  fundamental principle of 3D graphics. It's impossible to draw a vertex with multiple uv
+  coordinates. This sounds obvious, but think about a cube. Along the cube's seams, a single
+  vertex might have uv coordinates [0,1] for one face and [1,0] for a neighboring face. Yet,
+  each vertex processed by the vertex shader must have one and only one set of texture coords.
+  The solution to this problem is to duplicate the vertices. Each triangle must be drawn
+  between three vertices with data unique to that face (uv coords, normals, etc). The approach
+  may sound inefficient, but it's apparently how every rendering engine works under the hood.
+  For more info, see the links below:
+  https://community.khronos.org/t/texture-coordinates-per-face-index-instead-of-per-vertex/2484
+  https://stackoverflow.com/questions/36532924/how-can-i-specify-multiple-uv-coordinates-for-same-vertexes-with-vaos-vbos
 
 
 /*--- Resources & Factoids ---*/
