@@ -22,7 +22,7 @@ let config = {
 	LENGTH_SLICE_ASSEMBLY: 23,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 65,
-	LENGTH_BLOCK_HIGHLIGHT: 1100,
+	LENGTH_BLOCK_HIGHLIGHT: 1000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
@@ -44,7 +44,7 @@ let config = {
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks 
-    ENABLE_DEVELOPER_CAMERA: true,             // Places camera statically perpindicular to first slice
+    ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
@@ -84,6 +84,7 @@ let fbo_pos;                    // Particle Position
 let fbo_data_dynamic;           // Changing Particle Metadata
 let fbo_data_static;            // Unchanging Particle Metadata
 
+let texture_list = [];
 let camera_pos = [];
 let camera_pos_control_points = [
     [-2.4, -0.2, 1.8],
@@ -355,7 +356,7 @@ let frag_particle = `#version 300 es
 		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
-		vec3 color = vec3(0.34, 0.75, 1.0);
+		vec3 color = vec3(0.5, 0.9, 1.0);
 
         // Calculate Particle Transparency
 		vec2 location = (gl_PointCoord - 0.5) * 2.0;
@@ -411,6 +412,7 @@ let frag_blocks = `#version 300 es
     in vec2 uv_coordinate_frag;
     in float particle_wait;
     in float block_vertical_factor;
+    uniform sampler2D highlight_texture;
     uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -429,9 +431,8 @@ let frag_blocks = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float scene_fade_out_factor = 1.0;
-		vec3 color_base = vec3(0.28, 0.678, 0.86);
-		vec3 color_bright = vec3(0.6, 0.9, 1.0);
-		vec3 color = color_base;
+		float highlight_alpha = texture(highlight_texture, uv_coordinate_frag).r;
+		vec3 color = vec3(0.28, 0.678, 0.86);
 
         // Calculate Block Alpha
         float block_alpha = 0.0;
@@ -448,13 +449,10 @@ let frag_blocks = `#version 300 es
 			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
 			block_alpha = block_fade_factor * 0.05;
 
-			// Adjust Color for Highlight
+			// Adjust Alpha for Highlight
 			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
 			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
-			color = mix(color_bright, color_base, block_highlight_factor);
-
-			// Adjust Alpha for Highlight
-			block_alpha += ((1.0 - block_highlight_factor) / 38.0);
+			block_alpha += ((1.0 - block_highlight_factor) / 38.0) * (block_fade_factor * highlight_alpha * 7.5);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
@@ -478,6 +476,9 @@ function main () {
         config.BACKGROUND_COLOR[2],
         config.BACKGROUND_COLOR[3]);
     gl.enable(gl.BLEND);
+
+    // Begin Loading Textures
+    ImageLoader.loadImage(gl, texture_list, "../res/Block Texture.png");
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -1110,6 +1111,7 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     // Send Values to Block Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1i(program.uniforms.highlight_texture, 0);
 	gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
