@@ -144,7 +144,7 @@ Data Static
   the mess, the camera animation in this project is just too complex for the approach to
   be reasonable. So, it's time to learn splines! The three point interpolator I found for
   particle animation is a great start. But, it's hard to imagine having more flexibility
-  than a method that takes (locations[], factor) and returns a point in 3D space. Some
+  than a function that takes (locations[], factor) and returns a point in 3D space. Some
   resources I've gathered in early research:
   UCLA Paper: https://www.math.ucla.edu/~baker/149.1.02w/handouts/dd_splines.pdf
   The DeCastleljau Algorithm: https://ibiblio.org/e-notes/Splines/bezier.html

@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.1,                                // Speed of animation
+	SPEED: 1.0,                                // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -44,7 +44,7 @@ let config = {
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks 
-    ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
+    ENABLE_DEVELOPER_CAMERA: true,             // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
 }
@@ -67,7 +67,7 @@ let g_model_mat = new Matrix4();
 let g_view_mat = new Matrix4();
 
 let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
-let vao_blocks;                   // VAO For Drawing Ring Blocks
+let vao_blocks;                 // VAO For Drawing Ring Blocks
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -377,11 +377,13 @@ let vertex_blocks = `#version 300 es
 
     // Input Variables
     in vec4 vertex_position;
+    in vec2 uv_coordinate;
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
 
     // Output Variables
+    out vec2 uv_coordinate_frag;
     out float particle_wait;
     out float block_vertical_factor;
 
@@ -390,8 +392,13 @@ let vertex_blocks = `#version 300 es
         // Local Variables
         vec4 position = vec4(vertex_position[0], vertex_position[1], vertex_position[2], 1.0);
 
-        // Calculate Vertex Position & Pass Visibility
+        // Calculate Vertex Position
 		gl_Position = u_proj_mat * u_view_mat * position;
+
+        // Pass Fragment Shader UV Coordinates
+        uv_coordinate_frag = uv_coordinate;
+
+		// Pass Fragment Shader Wait & Height
 		particle_wait = vertex_position[3];
 		block_vertical_factor = min(max(abs(vertex_position[1] / 0.04), 0.66) * 1.1, 1.1);
     }
@@ -401,6 +408,7 @@ let frag_blocks = `#version 300 es
 	precision highp float;
 
     // Input Variables
+    in vec2 uv_coordinate_frag;
     in float particle_wait;
     in float block_vertical_factor;
     uniform float time;
@@ -486,9 +494,9 @@ function main () {
     if (config.ENABLE_DEVELOPER_CAMERA) {
 
     	// Define Developer Camera Position
-        camera_pos[0] = 0.0;
-        camera_pos[1] = .3;
-        camera_pos[2] = 4.9;
+        camera_pos[0] = -3.3; //0.0
+        camera_pos[1] = 0.0;  //0.3
+        camera_pos[2] = 0.0;  //4.9
 
         // Define Developer Camera View Matrix
     	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
@@ -683,33 +691,41 @@ function create_ring_block_vertex_array_object (pa) {
 
     /* Variable Declarations */
 
-	// Base Block Vertices
-	//    v6----- v5
-	//   /|      /|
-	//  v1------v0|
-	//  | |     | |
-	//  | |v7---|-|v4
-	//  |/      |/
-	//  v2------v3
-    var BLOCK_VERTICES = [
-		 .1, .1, .1,
-		-.1, .1, .1,
-		-.1,-.1, .1,
-		 .1,-.1, .1,
-		 .1,-.1,-.1,
-		 .1, .1,-.1,
-		-.1, .1,-.1,
-		-.1,-.1,-.1
+    /* Base Block Vertices
+     *
+	 *     v6----- v5
+	 *    /|      /|
+	 *   v1------v0|
+	 *   | |     | |
+	 *   | |v7---|-|v4
+	 *   |/      |/
+	 *   v2------v3
+	 *
+	 * Note: This vertex list contains three vertices for each of the 12 triangles
+	 *       in a single cube. Vertices may not be shared when each face requires
+	 *       distinct texture coordinates. See Notes.txt for more info.
+	 */
+    let BLOCK_VERTICES = [
+		.1, .1, .1,  -.1, .1, .1,  -.1,-.1, .1,    .1, .1, .1,  -.1,-.1, .1,   .1,-.1, .1, // front
+		.1, .1, .1,   .1,-.1, .1,   .1,-.1,-.1,    .1, .1, .1,   .1,-.1,-.1,   .1, .1,-.1, // right
+		.1, .1, .1,   .1, .1,-.1,  -.1, .1,-.1,    .1, .1, .1,  -.1, .1,-.1,  -.1, .1, .1, // up
+	   -.1, .1, .1,  -.1, .1,-.1,  -.1,-.1,-.1,   -.1, .1, .1,  -.1,-.1,-.1,  -.1,-.1, .1, // left
+	   -.1,-.1,-.1,   .1,-.1,-.1,   .1,-.1, .1,   -.1,-.1,-.1,   .1,-.1, .1,  -.1,-.1, .1, // down
+		.1,-.1,-.1,  -.1,-.1,-.1,  -.1, .1,-.1,    .1,-.1,-.1,  -.1, .1,-.1,   .1, .1,-.1  // back
     ];
 
-    var BLOCK_INDICES = new Uint8Array([
-		0, 1, 2,  0, 2, 3, // front
-		0, 3, 4,  0, 4, 5, // right
-		0, 5, 6,  0, 6, 1, // up
-		1, 6, 7,  1, 7, 2, // left
-		7, 4, 3,  7, 3, 2, // down
-		4, 7, 6,  4, 6, 5  // back
-    ]);
+    /* Base Block UV's
+	 * Note: This uv list contains an x and y coordinate for each vertex in the
+	 *       list above. The order of the two lists matches.
+	 */
+    let BLOCK_UVS = [
+		1,1, 0,1, 0,0,  1,1, 0,0, 1,0, // front
+		0,1, 0,0, 1,0,  0,1, 1,0, 1,1, // right
+		1,1, 1,0, 0,0,  1,1, 0,0, 0,1, // up
+		1,1, 0,1, 0,0,  1,1, 0,0, 1,0, // left
+		0,0, 1,0, 1,1,  0,0, 1,1, 0,1, // down
+		0,0, 1,0, 1,1,  0,0, 1,1, 0,1  // back
+    ];
 
     /* Block Generation Code */
 
@@ -717,17 +733,18 @@ function create_ring_block_vertex_array_object (pa) {
      *       ring as a triple [X, Y, Z] representing coordinades in 3D space. It then
      *       appends a fourth constant to each vertex W, representing the wait value
      *       of the particle corresponding to that vertex. This value is used to toggle
-     *       block's visibility during rendering in the fragment shader. The section
-     *       also generates an array containing indices that specify which vertices of
-     *       each block are shared. Finally, both arrays are stored as buffer data for
-     *       processing in the vertex shader.
+     *       each block's visibility during rendering in the fragment shader. Next, the
+     *       section generates the uv coordinates for each block vertex. Last, the 
+     *       loop creates an array containing indices that specify which vertices of
+     *       each block are shared (in this case, none) and stores all three lists as
+     *       buffer data for processing in the vertex shader.
      * 
-     *       Total Vertices:           Blocks * 8
-     *       Total Indices:            Blocks * 36
+     *       Block UV Structure:       [U, V]
      *       Block Vertex Structure:   [X, Y, Z, Wait]
      */
     let FINAL_VERTICES = [];
-    let FINAL_INDICES = [];
+    let FINAL_UVS = [];
+    let FINAL_VERTEX_INDICES = [];
 
     // For Each Slice
     for (let slice = 0; slice < config.RING_SLICES; slice++) {
@@ -741,12 +758,12 @@ function create_ring_block_vertex_array_object (pa) {
 			let block_position = pa[slice_index + block].position_final;
 			let block_visibility_offset = pa[slice_index + block].wait;
 
-			// Add Block Vertices
-			for (let v = 0; v < 8; v++) {
+			// Add 36 Block Vertices
+			for (let v = 0; v < 36; v++) {
 
 				// Calculate Vertex Position
 				let vertex = [
-					BLOCK_VERTICES[(v * 3)] * .029,
+					BLOCK_VERTICES[(v * 3) + 0] * .029,
 					BLOCK_VERTICES[(v * 3) + 1] * .0305235,
 					BLOCK_VERTICES[(v * 3) + 2] * .04845
 				];
@@ -754,19 +771,24 @@ function create_ring_block_vertex_array_object (pa) {
 				// Apply Block Rotation
 				vertex = Rotator.rotateAroundYAxis(slice_angle, vertex);
 
-				// Add Vertex Locations
+				// Add Vertex Values
 				FINAL_VERTICES.push(block_position[0] + vertex[0]);
 				FINAL_VERTICES.push(block_position[1] + vertex[1]);
 				FINAL_VERTICES.push(block_position[2] + vertex[2]);
 				FINAL_VERTICES.push(block_visibility_offset);
 			}
 
-			// Add Shared Vertex Indices for Block
-			for (let position = 0; position < 36; position++) {
-				FINAL_INDICES.push((slice * config.SLICE_PARTICLES + block) * 8 + BLOCK_INDICES[position]);
+			// Add 36 * 2 UV Coordinates
+			for (let position = 0; position < 72; position++) {
+				FINAL_UVS.push(BLOCK_UVS[position]);
 			}
     	}
     }
+
+    // Build Index Array
+	for (let position = 0; position < 36 * config.RING_SLICES * config.SLICE_PARTICLES; position++) {
+		FINAL_VERTEX_INDICES.push(position);
+	}
 
     /* VAO Construction */
 
@@ -775,20 +797,23 @@ function create_ring_block_vertex_array_object (pa) {
     gl.bindVertexArray(vao_blocks);
 
     // Create Vertex Buffer
-    vertex_buffer = gl.createBuffer()
+    let vertex_buffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(FINAL_VERTICES),
-        gl.STATIC_DRAW
-    );
-    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(prog_blocks.uniforms.vertex_position);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(FINAL_VERTICES), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+
+    // Create UV Buffer
+    let uv_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, uv_buffer);
+    gl.enableVertexAttribArray(prog_blocks.attributes.uv_coordinate);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(FINAL_UVS), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
 
     // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
-    vertex_element_buffer = gl.createBuffer();
+    let vertex_element_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(FINAL_INDICES), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(FINAL_VERTEX_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
