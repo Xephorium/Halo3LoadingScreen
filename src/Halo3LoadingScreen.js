@@ -21,11 +21,11 @@ let config = {
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
 	LENGTH_SLICE_ASSEMBLY: 23,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
-	LENGTH_BLOCK_FADE: 65,
+	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
+	RESOLUTION_SCALE: 2.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -436,7 +436,7 @@ let frag_blocks = `#version 300 es
 
         // Calculate Block Alpha
         float block_alpha = 0.0;
-        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly;
+        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly + 50.0;
 
         // Account for Loop Fade Out
         if (delay_time > length_loop - length_scene_fade) {
@@ -452,7 +452,7 @@ let frag_blocks = `#version 300 es
 			// Adjust Alpha for Highlight
 			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
 			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
-			block_alpha += ((1.0 - block_highlight_factor) / 38.0) * (block_fade_factor * highlight_alpha * 7.5);
+			block_alpha += ((1.0 - block_highlight_factor) / 38.0) * (block_fade_factor * highlight_alpha * 8.5);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
