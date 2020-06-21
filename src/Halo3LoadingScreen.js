@@ -43,10 +43,13 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks 
+    LOGO_SCALE: 0.4,                           // Logo Scale Relative to Screen Size
+    LOGO_PADDING: 0.07,                        // Logo Padding Relative to Screen Size
+    ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
-    ENABLE_ALPHA_SCALING: true                 // Whether particle alpha changes based on distance from camera
+    ENABLE_ALPHA_SCALING: true,                // Whether particle alpha changes based on distance from camera
+    ENABLE_LOGO: true
 }
 
 // Generated Global Initialization
@@ -462,10 +465,44 @@ let frag_blocks = `#version 300 es
 `;
 
 let vertex_logo = `#version 300 es
+
+  // Input Variables
   in vec4 a_position;
+  uniform float logo_scale;
+  uniform float logo_padding;
   
   void main() {
-    gl_Position = a_position;
+
+    // Local Variables
+    float padding_vert = logo_padding;
+    float padding_horiz = logo_padding * .562;
+
+    // Calculate Vertex Position
+    if (a_position.x == -1.0 && a_position.y == -1.0) {
+
+    	// Bottom Left
+        gl_Position = a_position + vec4((2.0 - (2.0 * logo_scale + padding_horiz)), padding_vert, 0.0, 0.0);
+
+    } else if (a_position.x == -1.0 && a_position.y == 1.0) {
+
+        // Top Left
+        gl_Position = a_position + vec4(
+            (2.0 - (2.0 * logo_scale + padding_horiz)),
+            -(2.0 - (2.0 * logo_scale + padding_vert)),
+            0.0, 
+            0.0
+        );
+
+    } else if (a_position.x == 1.0 && a_position.y == 1.0) {
+
+        // Top Right
+        gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);
+    
+    } else if (a_position.x == 1.0 && a_position.y == -1.0) {
+
+    	// Bottom Right
+        gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
+    }
   }
 `;
 
@@ -624,7 +661,7 @@ function main () {
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
-		draw_logo();
+		if (config.ENABLE_LOGO) draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -1205,6 +1242,8 @@ function draw_logo() {
 //     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
 //     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
 //     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
+    gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
