@@ -39,7 +39,7 @@ let config = {
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
     PARTICLE_SIZE: 2.4,
-    PARTICLE_WAIT_VARIATION: 400,              // Amount of random flux in particle wait
+    PARTICLE_WAIT_VARIATION: 500,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
