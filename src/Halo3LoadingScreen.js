@@ -68,6 +68,7 @@ let g_view_mat = new Matrix4();
 
 let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
+let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -76,6 +77,7 @@ let prog_display;               // FBO Renderer
 let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
 let prog_blocks;                // Block Renderer
+let prog_logo;                  // Logo Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -459,6 +461,24 @@ let frag_blocks = `#version 300 es
 	}
 `;
 
+let vertex_logo = `#version 300 es
+  in vec4 a_position;
+  
+  void main() {
+    gl_Position = a_position;
+  }
+`;
+
+let frag_logo = `#version 300 es
+  precision mediump float;
+
+  out vec4 cg_FragColor;
+
+  void main() {
+    cg_FragColor = vec4(1.0, 1.0, 1.0, 0.5);
+  }
+`;
+
 /*--- Main Program ---*/
 
 function main () {
@@ -488,6 +508,7 @@ function main () {
 	prog_position = new GLProgram(vertex_display, frag_position);
     prog_data = new GLProgram(vertex_display, frag_data);
     prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
+    prog_logo = new GLProgram(vertex_logo, frag_logo);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -524,6 +545,7 @@ function main () {
     // Create Vertex Array Objects
     create_data_texture_vertex_array_object();
     create_ring_block_vertex_array_object(pa);
+    create_logo_vertex_array_object();
 
     // Create Buffers (Define Input Coordinates for Shaders)
    	initialize_buffers(prog_particle); 
@@ -602,6 +624,7 @@ function main () {
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
+		draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -818,6 +841,41 @@ function create_ring_block_vertex_array_object (pa) {
     
     // Unbind
     gl.bindVertexArray(null);
+}
+
+// Note: This VertexArrayObject contains a square consisting of two triangles,
+//       on which the Halo 3 Logo is drawn.
+function create_logo_vertex_array_object () {
+
+	// Create Vertex Array Object
+    vao_logo = gl.createVertexArray();
+    gl.bindVertexArray(vao_logo);
+
+    // Create Vertex Buffer
+    let vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+            -1, -1,
+            -1, 1,
+            1, 1,
+            1, -1
+        ]),
+        gl.STATIC_DRAW
+    );
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_logo.uniforms.a_position);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    let vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    // Note: Six vertices representing two triangles with a shared edge from bottom left to top right 
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
+
 }
 
 
@@ -1132,6 +1190,29 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     gl.drawElements(gl.TRIANGLES, indices_to_draw, gl.UNSIGNED_INT, 0);
 
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.bindVertexArray(null);
+}
+
+
+function draw_logo() {
+    let program = prog_logo;
+    program.bind();
+
+    // Send Values to Logo Shader
+// 	gl.uniform1f(program.uniforms.time, time);
+//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+	
+	gl.viewport(0, 0, canvas.width, canvas.height);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.bindVertexArray(vao_logo);
+
+	// Draw Each Indexed Point of Logo
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
 
     gl.bindVertexArray(null);
 }
