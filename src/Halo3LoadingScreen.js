@@ -468,8 +468,12 @@ let vertex_logo = `#version 300 es
 
   // Input Variables
   in vec4 a_position;
+  in vec2 uv_coordinate;
   uniform float logo_scale;
   uniform float logo_padding;
+
+  // Output Variables
+  out vec2 uv_coordinate_frag;
   
   void main() {
 
@@ -503,11 +507,16 @@ let vertex_logo = `#version 300 es
     	// Bottom Right
         gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
     }
+
+    // Pass Fragment Shader UV Coordinates
+    uv_coordinate_frag = uv_coordinate;
   }
 `;
 
 let frag_logo = `#version 300 es
   precision mediump float;
+
+  in vec2 uv_coordinate_frag;
 
   out vec4 cg_FragColor;
 
@@ -884,6 +893,40 @@ function create_ring_block_vertex_array_object (pa) {
 //       on which the Halo 3 Logo is drawn.
 function create_logo_vertex_array_object () {
 
+    /* Variable Declarations */
+
+    /* Logo Vertices
+     *
+     *  v1-------v2   v4
+     *  |       /    / |
+     *  |     /    /   |
+     *  |   /    /     |
+     *  | /    /       |
+     *  v0   v3-------v5
+     *
+	 *
+	 * Note: This vertex list contains three vertices for each of the 2 triangles
+	 *       in the plane on which the logo is drawn.
+	 */
+    let LOGO_VERTICES = [
+        -1, -1,  -1,  1,   1,  1, // Left Triangle 
+        -1, -1,   1,  1,   1, -1  // Right Triangle
+    ];
+
+    /* Logo UV's
+	 * Note: This uv list contains an x and y coordinate for each vertex in the
+	 *       list above. The order of the two lists matches.
+	 */
+    let LOGO_UVS = [
+		0,0, 0,1, 1,1, // Left Triangle 
+        0,0, 1,1, 1,0  // Right Triangle
+    ];
+
+    // Logo Index Array
+    let LOGO_INDICES = [0, 1, 2, 3, 4, 5];
+
+    /* VAO Construction */
+
 	// Create Vertex Array Object
     vao_logo = gl.createVertexArray();
     gl.bindVertexArray(vao_logo);
@@ -891,24 +934,21 @@ function create_logo_vertex_array_object () {
     // Create Vertex Buffer
     let vertex_buffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([
-            -1, -1,
-            -1, 1,
-            1, 1,
-            1, -1
-        ]),
-        gl.STATIC_DRAW
-    );
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(LOGO_VERTICES),gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(prog_logo.uniforms.a_position);
+
+    // Create UV Buffer
+    let uv_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, uv_buffer);
+    gl.enableVertexAttribArray(prog_logo.attributes.uv_coordinate);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(LOGO_UVS), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
 
     // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
     let vertex_element_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-    // Note: Six vertices representing two triangles with a shared edge from bottom left to top right 
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(LOGO_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
