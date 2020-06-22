@@ -19,10 +19,12 @@ let config = {
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
-	LENGTH_SLICE_ASSEMBLY: 23,
+	LENGTH_SLICE_ASSEMBLY: 21,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
+	LENGTH_LOGO_WAIT: 22000,
+	LENGTH_LOGO_FADE: 7000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 2.0,                     // Default: 1080p
@@ -514,23 +516,45 @@ let vertex_logo = `#version 300 es
 `;
 
 let frag_logo = `#version 300 es
-  precision mediump float;
+	precision mediump float;
 
-  // Input Variables
-  in vec2 uv_coordinate_frag;
-  uniform sampler2D logo_texture;
+	// Input Variables
+	in vec2 uv_coordinate_frag;
+	uniform sampler2D logo_texture;
+	uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_scene_fade;
+	uniform float logo_wait;
+	uniform float logo_fade;
 
-  // Output Variables
-  out vec4 cg_FragColor;
+	// Output Variables
+	out vec4 cg_FragColor;
 
-  void main() {
+	void main() {
 
-    // Local Variables
-    float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
-    float logo_visibility = 0.65;
+		// Local Variables
+		float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
+		float logo_visibility = 0.65;
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
+		float scene_fade_out_factor = 1.0;
 
-    cg_FragColor = vec4(0.5, 0.815, 1.0, logo_shape * logo_visibility);
-  }
+        // Account for Loop Fade Out
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
+
+		// Calculate Logo Visibility
+		float logo_alpha = 0.0;
+		if (delay_time > logo_wait) {
+            float fade_in_factor = min(((delay_time - logo_wait) / logo_fade), 1.0);
+			logo_alpha = logo_shape * logo_visibility * fade_in_factor * scene_fade_out_factor;
+		}
+
+		cg_FragColor = vec4(0.5, 0.815, 1.0, logo_alpha);
+    }
 `;
 
 /*--- Main Program ---*/
@@ -1288,12 +1312,14 @@ function draw_logo() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
 
     // Send Values to Logo Shader
-// 	gl.uniform1f(program.uniforms.time, time);
-//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
-//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
-//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
-//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
     gl.uniform1i(program.uniforms.logo_texture, 7);
+	gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.logo_wait, config.LENGTH_LOGO_WAIT);
+    gl.uniform1f(program.uniforms.logo_fade, config.LENGTH_LOGO_FADE);
     gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
     gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
 	
