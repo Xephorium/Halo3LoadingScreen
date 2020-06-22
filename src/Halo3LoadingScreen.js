@@ -117,7 +117,7 @@ let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 //                 [ Top1     Top2    Top3    Bottom1   Bottom2   Bottom3]
 let line_heights = [ 0.0842,  0.0721, 0.06,   -0.0842,  -0.0721,  -0.06  ];
 let line_radii   = [ 2.9855,  3.009,  3.0149, 2.9855,   3.009,    3.0149 ];
-let line_factors = [ 1.02,    0.97,   0.94,    1.06,    1.035,    0.98   ];
+let line_factors = [ 1.02,    0.97,   0.94,   1.035,    1.06,     0.98   ];
 
 let start_time, time;
 var canvas_opacity = 0;
@@ -604,8 +604,8 @@ let vertex_line = `#version 300 es
         float completion_factor = ring_assembly_factor * line_factor;
 
 		// Calculate Point Position
-		float x_pos = line_radius * -cos(3.14159265 * min((vertex_angle[0] / 180.0) * completion_factor, 1.0));
-		float y_pos = line_radius * sin(3.14159265 * min((vertex_angle[0] / 180.0) * completion_factor, 1.0));
+		float x_pos = line_radius * -cos(3.14159265 * max(min((vertex_angle[0] / 180.0) * completion_factor, 1.0), -1.0));
+		float y_pos = line_radius *  sin(3.14159265 * max(min((vertex_angle[0] / 180.0) * completion_factor, 1.0), -1.0));
 		vec4 position = vec4(x_pos, line_height, y_pos, 1.0);
 
 		// Set Point Position
