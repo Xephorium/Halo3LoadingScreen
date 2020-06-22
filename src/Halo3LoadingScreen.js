@@ -47,6 +47,7 @@ let config = {
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
     LOGO_SCALE: 0.325,                         // Logo Scale Relative to Screen Size
     LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
+    LINE_RESOLUTION: 1951,                     // Points Along Ring Guide Lines (Must Be Odd)
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
@@ -74,6 +75,7 @@ let g_view_mat = new Matrix4();
 let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
 let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
+let vao_line;                   // VAO For Drawing Single Ring Line Path
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -536,7 +538,7 @@ let frag_logo = `#version 300 es
 
 		// Local Variables
 		float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
-		float logo_visibility = 0.65;
+		float logo_visibility = 0.7;
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 		float scene_fade_out_factor = 1.0;
@@ -553,7 +555,63 @@ let frag_logo = `#version 300 es
 			logo_alpha = logo_shape * logo_visibility * fade_in_factor * scene_fade_out_factor;
 		}
 
-		cg_FragColor = vec4(0.5, 0.815, 1.0, logo_alpha);
+		cg_FragColor = vec4(0.45, 0.8, 1.0, logo_alpha);
+    }
+`;
+
+let vertex_line = `#version 300 es
+
+	// Input Variables
+	in vec4 vertex_angle;
+	uniform mat4 u_proj_mat;
+	uniform mat4 u_view_mat;
+
+	void main() {
+
+        // Local Variables
+        float radius = 3.0;
+        float height = 0.1;
+
+		// Calculate Point Position
+		float x_pos = radius * -cos(3.14159265 * (vertex_angle[0] / 180.0));
+		float y_pos = radius * sin(3.14159265 * (vertex_angle[0] / 180.0));
+		vec4 position = vec4(x_pos, height, y_pos, 1.0);
+
+		// Set Point Position
+		gl_Position = u_proj_mat * u_view_mat * position;
+
+	}
+`;
+
+let frag_line = `#version 300 es
+	precision mediump float;
+
+	// Input Variables
+	uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_scene_fade;
+
+	// Output Variables
+	out vec4 cg_FragColor;
+
+	void main() {
+
+		// Local Variables
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
+		float scene_fade_out_factor = 1.0;
+
+        // Account for Loop Fade Out
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
+
+		// Calculate Line Visibility
+		float line_alpha = 1.0 * scene_fade_out_factor;
+
+		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
     }
 `;
 
@@ -588,6 +646,7 @@ function main () {
     prog_data = new GLProgram(vertex_display, frag_data);
     prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
     prog_logo = new GLProgram(vertex_logo, frag_logo);
+    prog_line = new GLProgram(vertex_line, frag_line);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -625,6 +684,7 @@ function main () {
     create_data_texture_vertex_array_object();
     create_ring_block_vertex_array_object(pa);
     create_logo_vertex_array_object();
+    create_line_vertex_array_object();
 
     // Create Buffers (Define Input Coordinates for Shaders)
    	initialize_buffers(prog_particle); 
@@ -704,6 +764,7 @@ function main () {
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
+		draw_line(g_proj_mat, g_view_mat);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -985,7 +1046,58 @@ function create_logo_vertex_array_object () {
     
     // Unbind
     gl.bindVertexArray(null);
+}
 
+// Note: This VertexArrayObject contains a list of points representing a single
+//       guide line around the ring's perimeter.
+function create_line_vertex_array_object () {
+
+    /* Variable Declarations */
+
+    /* Line Vertices
+     *
+     *  -180  -90   0   +90  +180
+     *  @-----@-----@-----@-----@
+     *
+     *  Where Line Resolution = 5
+	 *
+	 * Note: This block generates a single value for each vertex, representing its final 
+	 *       angle around the ring. All other values are calculated at runtime in the
+	 *       vertex shader.
+	 */
+    let LINE_VERTICES = [];
+    let half = (config.LINE_RESOLUTION - 1) / 2.0;
+    for (let x = 0; x < config.LINE_RESOLUTION; x++) {
+    	// -180 * ( (half - x) / half )
+    	LINE_VERTICES.push((((new Decimal(half)).minus(x)).dividedBy(half)).times(-180).toPrecision(10));
+    }
+
+    // Line Index Array
+    let LINE_INDICES = [];
+    for (let x = 0; x < config.LINE_RESOLUTION; x++) {
+    	LINE_INDICES.push(x);
+    }
+
+    /* VAO Construction */
+
+	// Create Vertex Array Object
+    vao_line = gl.createVertexArray();
+    gl.bindVertexArray(vao_line);
+
+    // Create Vertex Buffer
+    let vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(LINE_VERTICES),gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 1, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_line.uniforms.vertex_angle);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    let vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(LINE_INDICES), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
 }
 
 
@@ -1330,6 +1442,34 @@ function draw_logo() {
 
 	// Draw Each Indexed Point of Logo
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.bindVertexArray(null);
+}
+
+function draw_line(g_proj_mat, g_view_mat) {
+    let program = prog_line;
+    program.bind();
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+
+    // Send Values to Logo Shader
+    gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
+	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+	
+	gl.viewport(0, 0, canvas.width, canvas.height);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.bindVertexArray(vao_line);
+
+	// Draw Each Indexed Point of Logo
+    gl.drawElements(gl.LINE_STRIP, config.LINE_RESOLUTION, gl.UNSIGNED_SHORT, 0);
 
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
