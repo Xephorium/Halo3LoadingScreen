@@ -116,8 +116,8 @@ let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 
 //                 [ Top1     Top2    Top3    Bottom1   Bottom2   Bottom3]
 let line_heights = [ 0.0842,  0.0721, 0.06,   -0.0842,  -0.0721,  -0.06  ];
-let line_radii   = [ 2.9855, 3.009,  3.0149, 2.9855,  3.009,    3.0149 ];
-let line_factors = [ 1.0,     1.0,    1.0,    1.0,      1.0,      1.0    ];
+let line_radii   = [ 2.9855,  3.009,  3.0149, 2.9855,   3.009,    3.0149 ];
+let line_factors = [ 1.02,    0.97,   0.94,    1.06,    1.035,    0.98   ];
 
 let start_time, time;
 var canvas_opacity = 0;
@@ -573,19 +573,43 @@ let vertex_line = `#version 300 es
 	in vec4 vertex_angle;
 	uniform mat4 u_proj_mat;
 	uniform mat4 u_view_mat;
+	uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_ring_assembly;
+	uniform float length_scene_fade;
 	uniform float line_height;
 	uniform float line_radius;
+	uniform float line_factor;
+
+	// Output Variables
+	out float scene_fade_out_factor_frag;
 
 	void main() {
 
+		// Calculate Time
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
+
+		// Calculate Fade Out Factor
+		float scene_fade_out_factor = 1.0;
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
+        scene_fade_out_factor_frag = scene_fade_out_factor;
+
+        // Calculate Completion Factor
+        float ring_assembly_factor = max((delay_time - 3.0 * length_start_delay) / length_ring_assembly, 0.0);
+        float completion_factor = ring_assembly_factor * line_factor;
+
 		// Calculate Point Position
-		float x_pos = line_radius * -cos(3.14159265 * (vertex_angle[0] / 180.0));
-		float y_pos = line_radius * sin(3.14159265 * (vertex_angle[0] / 180.0));
+		float x_pos = line_radius * -cos(3.14159265 * min((vertex_angle[0] / 180.0) * completion_factor, 1.0));
+		float y_pos = line_radius * sin(3.14159265 * min((vertex_angle[0] / 180.0) * completion_factor, 1.0));
 		vec4 position = vec4(x_pos, line_height, y_pos, 1.0);
 
 		// Set Point Position
 		gl_Position = u_proj_mat * u_view_mat * position;
-
 	}
 `;
 
@@ -593,29 +617,15 @@ let frag_line = `#version 300 es
 	precision mediump float;
 
 	// Input Variables
-	uniform float time;
-	uniform float length_loop;
-	uniform float length_start_delay;
-	uniform float length_slice_assembly;
-	uniform float length_scene_fade;
+	in float scene_fade_out_factor_frag;
 
 	// Output Variables
 	out vec4 cg_FragColor;
 
 	void main() {
 
-		// Local Variables
-		float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
-		float scene_fade_out_factor = 1.0;
-
-        // Account for Loop Fade Out
-        if (delay_time > length_loop - length_scene_fade) {
-            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
-        }
-
 		// Calculate Line Visibility
-		float line_alpha = 1.0 * scene_fade_out_factor;
+		float line_alpha = 1.0 * scene_fade_out_factor_frag;
 
 		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
     }
@@ -1467,9 +1477,11 @@ function draw_line(g_proj_mat, g_view_mat, index) {
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
     gl.uniform1f(program.uniforms.line_height, line_heights[index]);
     gl.uniform1f(program.uniforms.line_radius, line_radii[index]);
+    gl.uniform1f(program.uniforms.line_factor, line_factors[index]);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
