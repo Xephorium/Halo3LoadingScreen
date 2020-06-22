@@ -13,7 +13,7 @@ class ImageLoader {
 
     /*--- "Public" Load Image Method ---*/
 
-    static loadImage(gl, textures, url) {
+    static loadImage(gl, textures, url, index) {
 
         // Declare Local Variables
         let image = new Image();
@@ -21,8 +21,8 @@ class ImageLoader {
         image.src = url; 
 
         // Create a texture object
-        textures.push(gl.createTexture()); 
-        let i = textures.length - 1;
+        let i = index;
+        textures[i] = gl.createTexture(); 
 
         image.onload = function() { 
 

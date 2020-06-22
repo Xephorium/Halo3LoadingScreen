@@ -43,8 +43,8 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    LOGO_SCALE: 0.4,                           // Logo Scale Relative to Screen Size
-    LOGO_PADDING: 0.07,                        // Logo Padding Relative to Screen Size
+    LOGO_SCALE: 0.325,                         // Logo Scale Relative to Screen Size
+    LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
@@ -516,12 +516,20 @@ let vertex_logo = `#version 300 es
 let frag_logo = `#version 300 es
   precision mediump float;
 
+  // Input Variables
   in vec2 uv_coordinate_frag;
+  uniform sampler2D logo_texture;
 
+  // Output Variables
   out vec4 cg_FragColor;
 
   void main() {
-    cg_FragColor = vec4(1.0, 1.0, 1.0, 0.5);
+
+    // Local Variables
+    float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
+    float logo_visibility = 0.65;
+
+    cg_FragColor = vec4(0.5, 0.815, 1.0, logo_shape * logo_visibility);
   }
 `;
 
@@ -544,7 +552,8 @@ function main () {
     gl.enable(gl.BLEND);
 
     // Begin Loading Textures
-    ImageLoader.loadImage(gl, texture_list, "../res/Block Texture.png");
+    ImageLoader.loadImage(gl, texture_list, "../res/Block Texture.png", 0);
+    ImageLoader.loadImage(gl, texture_list, "../res/Corner Logo Bungie.png", 7);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -1276,12 +1285,15 @@ function draw_logo() {
     let program = prog_logo;
     program.bind();
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+
     // Send Values to Logo Shader
 // 	gl.uniform1f(program.uniforms.time, time);
 //     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
 //     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
 //     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
 //     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
     gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
 	
@@ -1292,6 +1304,8 @@ function draw_logo() {
 
 	// Draw Each Indexed Point of Logo
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.bindVertexArray(null);
 }
