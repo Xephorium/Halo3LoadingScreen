@@ -52,7 +52,8 @@ let config = {
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true,                // Whether particle alpha changes based on distance from camera
-    ENABLE_LOGO: true
+    ENABLE_LOGO: true,                         // whether to render logo
+    ENABLE_LINES: true                         // Whether to render guide lines
 }
 
 // Generated Global Initialization
@@ -94,6 +95,7 @@ let fbo_data_dynamic;           // Changing Particle Metadata
 let fbo_data_static;            // Unchanging Particle Metadata
 
 let texture_list = [];
+
 let camera_pos = [];
 let camera_pos_control_points = [
     [-2.4, -0.2, 1.8],
@@ -111,6 +113,12 @@ let camera_focus_control_points = [
     [   3,  -.1, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
+
+//                 [ Top1     Top2    Top3    Bottom1   Bottom2   Bottom3]
+let line_heights = [ 0.0842,  0.0721, 0.06,   -0.0842,  -0.0721,  -0.06  ];
+let line_radii   = [ 2.9855, 3.009,  3.0149, 2.9855,  3.009,    3.0149 ];
+let line_factors = [ 1.0,     1.0,    1.0,    1.0,      1.0,      1.0    ];
+
 let start_time, time;
 var canvas_opacity = 0;
 
@@ -565,17 +573,15 @@ let vertex_line = `#version 300 es
 	in vec4 vertex_angle;
 	uniform mat4 u_proj_mat;
 	uniform mat4 u_view_mat;
+	uniform float line_height;
+	uniform float line_radius;
 
 	void main() {
 
-        // Local Variables
-        float radius = 3.0;
-        float height = 0.1;
-
 		// Calculate Point Position
-		float x_pos = radius * -cos(3.14159265 * (vertex_angle[0] / 180.0));
-		float y_pos = radius * sin(3.14159265 * (vertex_angle[0] / 180.0));
-		vec4 position = vec4(x_pos, height, y_pos, 1.0);
+		float x_pos = line_radius * -cos(3.14159265 * (vertex_angle[0] / 180.0));
+		float y_pos = line_radius * sin(3.14159265 * (vertex_angle[0] / 180.0));
+		vec4 position = vec4(x_pos, line_height, y_pos, 1.0);
 
 		// Set Point Position
 		gl_Position = u_proj_mat * u_view_mat * position;
@@ -654,14 +660,14 @@ function main () {
     if (config.ENABLE_DEVELOPER_CAMERA) {
 
     	// Define Developer Camera Position
-        camera_pos[0] = -3.3; //0.0
-        camera_pos[1] = 0.0;  //0.3
-        camera_pos[2] = 0.0;  //4.9
+        camera_pos[0] = -3.05; //0.0
+        camera_pos[1] = 0.1;  //0.3
+        camera_pos[2] = 0.1;  //4.9
 
         // Define Developer Camera View Matrix
     	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
     	// LookAt Parameters: camera pos, focus pos, up vector      
-        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -3, 0, 0, 0, 1, 0);
+        g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -3, 0.05, 0, 0, 1, 0);
 
     } else {
 
@@ -764,7 +770,7 @@ function main () {
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
-		draw_line(g_proj_mat, g_view_mat);
+		if (config.ENABLE_LINES) for (let x = 0; x < line_heights.length; x++) draw_line(g_proj_mat, g_view_mat, x);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -1448,7 +1454,7 @@ function draw_logo() {
     gl.bindVertexArray(null);
 }
 
-function draw_line(g_proj_mat, g_view_mat) {
+function draw_line(g_proj_mat, g_view_mat, index) {
     let program = prog_line;
     program.bind();
 
@@ -1462,6 +1468,8 @@ function draw_line(g_proj_mat, g_view_mat) {
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.line_height, line_heights[index]);
+    gl.uniform1f(program.uniforms.line_radius, line_radii[index]);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
