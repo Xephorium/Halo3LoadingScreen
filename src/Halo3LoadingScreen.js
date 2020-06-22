@@ -27,7 +27,7 @@ let config = {
 	LENGTH_LOGO_FADE: 7000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 2.0,                     // Default: 1080p
+	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -48,12 +48,14 @@ let config = {
     LOGO_SCALE: 0.325,                         // Logo Scale Relative to Screen Size
     LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
     LINE_RESOLUTION: 1951,                     // Points Along Ring Guide Lines (Must Be Odd)
+    LINE_OFFSET: .0002,                        // Distance Between Duplicate Guide Lines
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true,                // Whether particle alpha changes based on distance from camera
     ENABLE_LOGO: true,                         // whether to render logo
-    ENABLE_LINES: true                         // Whether to render guide lines
+    ENABLE_LINES: true,                        // Whether to render guide lines
+    ENABLE_LINE_THICKNESS_HACK: true           // Whether to render duplicate guide lines
 }
 
 // Generated Global Initialization
@@ -117,7 +119,7 @@ let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 //                 [ Top1     Top2    Top3    Bottom1   Bottom2   Bottom3]
 let line_heights = [ 0.0842,  0.0721, 0.06,   -0.0842,  -0.0721,  -0.06  ];
 let line_radii   = [ 2.9855,  3.009,  3.0149, 2.9855,   3.009,    3.0149 ];
-let line_factors = [ 1.02,    0.97,   0.94,   1.035,    1.06,     0.98   ];
+let line_factors = [ 1.012,   0.973,  0.946,  1.03,   1.054,    0.982  ];
 
 let start_time, time;
 var canvas_opacity = 0;
@@ -469,7 +471,7 @@ let frag_blocks = `#version 300 es
 			// Adjust Alpha for Highlight
 			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
 			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
-			block_alpha += ((1.0 - block_highlight_factor) / 38.0) * (block_fade_factor * highlight_alpha * 8.5);
+			block_alpha += ((1.0 - block_highlight_factor) / 35.0) * (block_fade_factor * highlight_alpha * 8.5);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
@@ -582,9 +584,11 @@ let vertex_line = `#version 300 es
 	uniform float line_height;
 	uniform float line_radius;
 	uniform float line_factor;
+	uniform float line_thickness_hack;
 
 	// Output Variables
 	out float scene_fade_out_factor_frag;
+	out float line_thickness_hack_frag;
 
 	void main() {
 
@@ -592,12 +596,13 @@ let vertex_line = `#version 300 es
 		float temp = mod(time, length_start_delay + length_loop);
 		float delay_time = max(temp - length_start_delay, 0.0);
 
-		// Calculate Fade Out Factor
+		// Calculate & Send Fragment Shader Variables
 		float scene_fade_out_factor = 1.0;
         if (delay_time > length_loop - length_scene_fade) {
             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
         }
         scene_fade_out_factor_frag = scene_fade_out_factor;
+        line_thickness_hack_frag = line_thickness_hack;
 
         // Calculate Completion Factor
         float ring_assembly_factor = max((delay_time - 3.0 * length_start_delay) / length_ring_assembly, 0.0);
@@ -618,6 +623,7 @@ let frag_line = `#version 300 es
 
 	// Input Variables
 	in float scene_fade_out_factor_frag;
+	in float line_thickness_hack_frag;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -625,7 +631,7 @@ let frag_line = `#version 300 es
 	void main() {
 
 		// Calculate Line Visibility
-		float line_alpha = 1.0 * scene_fade_out_factor_frag;
+		float line_alpha = 0.09 * scene_fade_out_factor_frag;
 
 		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
     }
@@ -778,9 +784,64 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
+		if (config.ENABLE_LINES) {
+			for (let x = 0; x < line_heights.length; x++) {
+				draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
+				if (config.ENABLE_LINE_THICKNESS_HACK) {
+
+					// North
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] + config.LINE_OFFSET,
+					    line_radii[x],
+					    line_factors[x]
+					);
+					// Northeast
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] + config.LINE_OFFSET,
+					    line_radii[x] + config.LINE_OFFSET,
+					    line_factors[x]
+					);
+					// East
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x],
+					    line_radii[x] + config.LINE_OFFSET,
+					    line_factors[x]
+					);
+					// Southeast
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] - config.LINE_OFFSET,
+					    line_radii[x] + config.LINE_OFFSET,
+					    line_factors[x]
+					);
+					// South
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] - config.LINE_OFFSET,
+					    line_radii[x],
+					    line_factors[x]
+					);
+					// Southwest
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] - config.LINE_OFFSET,
+					    line_radii[x] - config.LINE_OFFSET,
+					    line_factors[x]
+					);
+					// West
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x],
+					    line_radii[x] - config.LINE_OFFSET,
+					    line_factors[x]
+					);
+					// Northwest
+					draw_line(g_proj_mat, g_view_mat,
+					    line_heights[x] + config.LINE_OFFSET,
+					    line_radii[x] - config.LINE_OFFSET,
+					    line_factors[x]
+					);
+				}
+			}
+		}
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
-		if (config.ENABLE_LINES) for (let x = 0; x < line_heights.length; x++) draw_line(g_proj_mat, g_view_mat, x);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -1464,13 +1525,13 @@ function draw_logo() {
     gl.bindVertexArray(null);
 }
 
-function draw_line(g_proj_mat, g_view_mat, index) {
+function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
     let program = prog_line;
     program.bind();
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
 
-    // Send Values to Logo Shader
+    // Send Values to Line Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1f(program.uniforms.time, time);
@@ -1479,9 +1540,10 @@ function draw_line(g_proj_mat, g_view_mat, index) {
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
-    gl.uniform1f(program.uniforms.line_height, line_heights[index]);
-    gl.uniform1f(program.uniforms.line_radius, line_radii[index]);
-    gl.uniform1f(program.uniforms.line_factor, line_factors[index]);
+    gl.uniform1f(program.uniforms.line_height, height);
+    gl.uniform1f(program.uniforms.line_radius, radius);
+    gl.uniform1f(program.uniforms.line_factor, factor);
+    gl.uniform1f(program.uniforms.line_thickness_hack, config.ENABLE_LINE_THICKNESS_HACK ? 1 : 0);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -1491,7 +1553,7 @@ function draw_line(g_proj_mat, g_view_mat, index) {
 	// Draw Each Indexed Point of Logo
     gl.drawElements(gl.LINE_STRIP, config.LINE_RESOLUTION, gl.UNSIGNED_SHORT, 0);
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.bindVertexArray(null);
 }
