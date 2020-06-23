@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.17,                                // Speed of animation
+	SPEED: 1.17,                               // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -24,7 +24,7 @@ let config = {
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
 	LENGTH_LOGO_WAIT: 22000,
-	LENGTH_LOGO_FADE: 7000,
+	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.34,                    // Default: 1080p
@@ -565,7 +565,7 @@ let frag_logo = `#version 300 es
 			logo_alpha = logo_shape * logo_visibility * fade_in_factor * scene_fade_out_factor;
 		}
 
-		cg_FragColor = vec4(0.45, 0.8, 1.0, logo_alpha);
+		cg_FragColor = vec4(0.45, 0.82, 1.0, logo_alpha);
     }
 `;
 
