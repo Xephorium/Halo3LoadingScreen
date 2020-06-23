@@ -55,7 +55,7 @@ public class ObjectParser {
             }
             scanner.close();
         } catch (Exception e) {
-            System.out.println("Error Reading File");
+            System.out.println("Error Reading Input.");
             e.printStackTrace();
         }
 
@@ -86,12 +86,20 @@ public class ObjectParser {
         }
 
 
-        /*--- Print Output ---*/
+        /*--- Write Output to File ---*/
 
-        System.out.println("Vertex List: ");
-        for (String line : output) {
-            System.out.println(line);
+        try {
+            FileWriter fileWriter = new FileWriter("output.txt");
+            fileWriter.write("Vertex List: \n");
+            for (String line : output) {
+                fileWriter.write(line + "\n");
+            }
+            fileWriter.write("Total Vertices: " + output.size() * 2);
+            fileWriter.close();
+            System.out.println("Conversion Complete.");
+        } catch (IOException e) {
+            System.out.println("Error Writing Output.");
+            e.printStackTrace();
         }
-        System.out.println("Total Vertices: " + output.size() * 2);
     }
 }
