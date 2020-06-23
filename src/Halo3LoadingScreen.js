@@ -27,7 +27,7 @@ let config = {
 	LENGTH_LOGO_FADE: 7000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
+	RESOLUTION_SCALE: 1.34,                    // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -631,7 +631,7 @@ let frag_line = `#version 300 es
 	void main() {
 
 		// Calculate Line Visibility
-		float line_alpha = 0.09 * scene_fade_out_factor_frag;
+		float line_alpha = 0.12 * scene_fade_out_factor_frag;
 
 		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
     }
