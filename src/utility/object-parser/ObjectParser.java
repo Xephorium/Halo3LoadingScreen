@@ -7,9 +7,9 @@ import java.util.*;
  *  06.23.2020
  *
  *  The ObjectParser is a simple utility java class that parses a .obj file, returning
- *  a list of faces as sets of three vertices. Since this tool was built for wireframe
- *  rendering, all normal/UV data is discarded and each triangle contains a distinct
- *  set of vertices.  
+ *  a list of lines as sets of two vertices. Since this tool was built for wireframe
+ *  rendering in WebGL, all normal/UV data is discarded and each line is represented by
+ *  a distinct set of vertices.  
  *
  *  Source Object File Format:
  *    ...
@@ -21,10 +21,10 @@ import java.util.*;
  *    f 3 1 2          // Triangle 2
  *    f 2 3 1          // Triangle 3
  *
- *  Final Verex List Format:
- *    1.0, 2.0, 3.0,   4.0, 5.0, 6.0,   7.0, 8.0, 9.0,  // Triangle 1
- *    7.0, 8.0, 9.0,   1.0, 2.0, 3.0,   4.0, 5.0, 6.0,  // Triangle 2
- *    4.0, 5.0, 6.0,   7.0, 8.0, 9.0,   1.0, 2.0, 3.0   // Triangle 3
+ *  Final Line List Format:
+ *    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,  // Triangle 1
+ *    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,  // Triangle 2
+ *    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,  // Triangle 3
  */
 
 
@@ -82,7 +82,11 @@ public class ObjectParser {
                 int v3 = Integer.valueOf(faceVertices[2]);
 
                 // Add Output Line
-                output.add(vertexList.get(v1 - 1) + "   " + vertexList.get(v2 - 1) + "   " + vertexList.get(v2 - 1));
+                output.add(
+                    vertexList.get(v1 - 1) + " " + vertexList.get(v2 - 1) + " "    // Line 1
+                    + vertexList.get(v2 - 1) + " " + vertexList.get(v3 - 1) + " "  // Line 2
+                    + vertexList.get(v3 - 1) + " " + vertexList.get(v1 - 1) + " "  // Line 3
+                );
             }
         }
 
@@ -93,6 +97,6 @@ public class ObjectParser {
         for (String line : output) {
             System.out.println(line);
         }
-        System.out.println("Triangles: " + output.size());
+        System.out.println("Total Vertices: " + output.size() * 6);
     }
 }

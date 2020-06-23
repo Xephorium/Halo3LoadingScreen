@@ -79,6 +79,7 @@ let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
 let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
 let vao_line;                   // VAO For Drawing Single Ring Line Path
+let vao_grid;                   // VAO For Drawing Background Grid
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -88,6 +89,7 @@ let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
 let prog_blocks;                // Block Renderer
 let prog_logo;                  // Logo Renderer
+let prog_grid;                  // Grid Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -637,6 +639,51 @@ let frag_line = `#version 300 es
     }
 `;
 
+let vertex_grid = `#version 300 es
+
+	// Input Variables
+	in vec4 vertex_position;
+	uniform mat4 u_proj_mat;
+	uniform mat4 u_view_mat;
+
+	void main() {
+
+		// Set Point Position
+		gl_Position = u_proj_mat * u_view_mat * vertex_position;
+	}
+`;
+
+let frag_grid = `#version 300 es
+	precision mediump float;
+
+	// Input Variables
+// 	uniform float time;
+// 	uniform float length_loop;
+// 	uniform float length_start_delay;
+// 	uniform float length_slice_assembly;
+// 	uniform float length_ring_assembly;
+// 	uniform float length_scene_fade;
+
+	// Output Variables
+	out vec4 cg_FragColor;
+
+	void main() {
+
+		// Calculate Time
+// 		float temp = mod(time, length_start_delay + length_loop);
+// 		float delay_time = max(temp - length_start_delay, 0.0);
+
+// 		// Calculate & Send Fragment Shader Variables
+// 		float scene_fade_out_factor = 1.0;
+//         if (delay_time > length_loop - length_scene_fade) {
+//             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+//         }
+
+		cg_FragColor = vec4(0.45, 0.8, 1.0, 1.0);
+    }
+`;
+
+
 /*--- Main Program ---*/
 
 function main () {
@@ -669,6 +716,7 @@ function main () {
     prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
     prog_logo = new GLProgram(vertex_logo, frag_logo);
     prog_line = new GLProgram(vertex_line, frag_line);
+    prog_grid = new GLProgram(vertex_grid, frag_grid);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -707,6 +755,7 @@ function main () {
     create_ring_block_vertex_array_object(pa);
     create_logo_vertex_array_object();
     create_line_vertex_array_object();
+    create_grid_vertex_array_object();
 
     // Create Buffers (Define Input Coordinates for Shaders)
    	initialize_buffers(prog_particle); 
@@ -785,6 +834,7 @@ function main () {
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_LINES) draw_lines();
+		draw_grid(g_proj_mat, g_view_mat);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
@@ -1117,6 +1167,77 @@ function create_line_vertex_array_object () {
     let vertex_element_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(LINE_INDICES), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
+}
+
+// Note: This VertexArrayObject contains a list of all vertices in the background grid.
+//       The vertex list below was generated using the ObjectParser, a Java utility class
+//       built specifically for this purpose. 
+function create_grid_vertex_array_object () {
+
+    /* Variable Declarations */
+
+    // Grid Vertices
+    let GRID_VERTICES = [
+		-0.428622, 0.172891, 1.21881, -0.428622, -0.172891, -0.3, -0.428622, -0.172891, -0.3, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, -0.428622, 0.172891, 1.21881,
+-0.428622, 0.172891, -0.3, 0.428622, -0.172891, -0.3, 0.428622, -0.172891, -0.3, -0.428622, -0.172891, -0.3, -0.428622, -0.172891, -0.3, -0.428622, 0.172891, -0.3,
+0.428622, 0.172891, -0.3, 0.428622, -0.172891, 1.21881, 0.428622, -0.172891, 1.21881, 0.428622, -0.172891, -0.3, 0.428622, -0.172891, -0.3, 0.428622, 0.172891, -0.3,
+0.428622, 0.172891, 1.21881, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, 0.428622, -0.172891, 1.21881, 0.428622, -0.172891, 1.21881, 0.428622, 0.172891, 1.21881,
+0.428622, -0.172891, -0.3, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, -0.3, -0.428622, -0.172891, -0.3, 0.428622, -0.172891, -0.3,
+-0.428622, 0.172891, -0.3, 0.428622, 0.172891, 1.21881, 0.428622, 0.172891, 1.21881, 0.428622, 0.172891, -0.3, 0.428622, 0.172891, -0.3, -0.428622, 0.172891, -0.3,
+-0.857244, 0.172891, -0.3, 0.0, -0.172891, -1.5, 0.0, -0.172891, -1.5, -0.857244, -0.172891, -0.3, -0.857244, -0.172891, -0.3, -0.857244, 0.172891, -0.3,
+0.0, 0.172891, -1.5, 0.857244, -0.172891, -0.3, 0.857244, -0.172891, -0.3, 0.0, -0.172891, -1.5, 0.0, -0.172891, -1.5, 0.0, 0.172891, -1.5,
+0.857244, 0.172891, -0.3, -0.857244, -0.172891, -0.3, -0.857244, -0.172891, -0.3, 0.857244, -0.172891, -0.3, 0.857244, -0.172891, -0.3, 0.857244, 0.172891, -0.3,
+0.0, -0.172891, -1.5, 0.857244, -0.172891, -0.3, 0.857244, -0.172891, -0.3, -0.857244, -0.172891, -0.3, -0.857244, -0.172891, -0.3, 0.0, -0.172891, -1.5,
+0.0, 0.172891, -1.5, -0.857244, 0.172891, -0.3, -0.857244, 0.172891, -0.3, 0.857244, 0.172891, -0.3, 0.857244, 0.172891, -0.3, 0.0, 0.172891, -1.5,
+0.109687, 1.7177, 1.21881, -0.109687, 1.7177, -0.3, -0.109687, 1.7177, -0.3, 0.109687, 1.7177, -0.3, 0.109687, 1.7177, -0.3, 0.109687, 1.7177, 1.21881,
+-0.109687, 1.921649, -0.3, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, -0.3, 0.109687, 1.921649, -0.3, -0.109687, 1.921649, -0.3,
+0.109687, 1.7177, -0.3, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, 0.109687, 1.7177, 1.21881, 0.109687, 1.7177, 1.21881, 0.109687, 1.7177, -0.3,
+-0.109687, 1.7177, 1.21881, -0.109687, 1.921649, -0.3, -0.109687, 1.921649, -0.3, -0.109687, 1.7177, -0.3, -0.109687, 1.7177, -0.3, -0.109687, 1.7177, 1.21881,
+0.109687, 1.7177, 1.21881, -0.109687, 1.921649, 1.21881, -0.109687, 1.921649, 1.21881, -0.109687, 1.7177, 1.21881, -0.109687, 1.7177, 1.21881, 0.109687, 1.7177, 1.21881,
+-0.109687, 1.7177, -0.3, 0.109687, 1.921649, -0.3, 0.109687, 1.921649, -0.3, 0.109687, 1.7177, -0.3, 0.109687, 1.7177, -0.3, -0.109687, 1.7177, -0.3,
+-0.428622, 0.172891, 1.21881, -0.428622, 0.172891, -0.3, -0.428622, 0.172891, -0.3, -0.428622, -0.172891, -0.3, -0.428622, -0.172891, -0.3, -0.428622, 0.172891, 1.21881,
+-0.428622, 0.172891, -0.3, 0.428622, 0.172891, -0.3, 0.428622, 0.172891, -0.3, 0.428622, -0.172891, -0.3, 0.428622, -0.172891, -0.3, -0.428622, 0.172891, -0.3,
+0.428622, 0.172891, -0.3, 0.428622, 0.172891, 1.21881, 0.428622, 0.172891, 1.21881, 0.428622, -0.172891, 1.21881, 0.428622, -0.172891, 1.21881, 0.428622, 0.172891, -0.3,
+0.428622, 0.172891, 1.21881, -0.428622, 0.172891, 1.21881, -0.428622, 0.172891, 1.21881, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, 0.428622, 0.172891, 1.21881,
+0.428622, -0.172891, -0.3, 0.428622, -0.172891, 1.21881, 0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, -0.428622, -0.172891, 1.21881, 0.428622, -0.172891, -0.3,
+-0.428622, 0.172891, -0.3, -0.428622, 0.172891, 1.21881, -0.428622, 0.172891, 1.21881, 0.428622, 0.172891, 1.21881, 0.428622, 0.172891, 1.21881, -0.428622, 0.172891, -0.3,
+-0.857244, 0.172891, -0.3, 0.0, 0.172891, -1.5, 0.0, 0.172891, -1.5, 0.0, -0.172891, -1.5, 0.0, -0.172891, -1.5, -0.857244, 0.172891, -0.3,
+0.0, 0.172891, -1.5, 0.857244, 0.172891, -0.3, 0.857244, 0.172891, -0.3, 0.857244, -0.172891, -0.3, 0.857244, -0.172891, -0.3, 0.0, 0.172891, -1.5,
+0.857244, 0.172891, -0.3, -0.857244, 0.172891, -0.3, -0.857244, 0.172891, -0.3, -0.857244, -0.172891, -0.3, -0.857244, -0.172891, -0.3, 0.857244, 0.172891, -0.3,
+0.109687, 1.7177, 1.21881, -0.109687, 1.7177, 1.21881, -0.109687, 1.7177, 1.21881, -0.109687, 1.7177, -0.3, -0.109687, 1.7177, -0.3, 0.109687, 1.7177, 1.21881,
+-0.109687, 1.921649, -0.3, -0.109687, 1.921649, 1.21881, -0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, -0.109687, 1.921649, -0.3,
+0.109687, 1.7177, -0.3, 0.109687, 1.921649, -0.3, 0.109687, 1.921649, -0.3, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, 0.109687, 1.7177, -0.3,
+-0.109687, 1.7177, 1.21881, -0.109687, 1.921649, 1.21881, -0.109687, 1.921649, 1.21881, -0.109687, 1.921649, -0.3, -0.109687, 1.921649, -0.3, -0.109687, 1.7177, 1.21881,
+0.109687, 1.7177, 1.21881, 0.109687, 1.921649, 1.21881, 0.109687, 1.921649, 1.21881, -0.109687, 1.921649, 1.21881, -0.109687, 1.921649, 1.21881, 0.109687, 1.7177, 1.21881,
+-0.109687, 1.7177, -0.3, -0.109687, 1.921649, -0.3, -0.109687, 1.921649, -0.3, 0.109687, 1.921649, -0.3, 0.109687, 1.921649, -0.3, -0.109687, 1.7177, -0.3,
+    ];
+
+    // Grid Index Array
+    let GRID_INDICES = [];
+    for (let x = 0; x < 192; x++) {
+    	GRID_INDICES.push(x);
+    }
+
+    /* VAO Construction */
+
+	// Create Vertex Array Object
+    vao_grid = gl.createVertexArray();
+    gl.bindVertexArray(vao_grid);
+
+    // Create Vertex Buffer
+    let vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(GRID_VERTICES),gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_grid.uniforms.vertex_position);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    let vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(GRID_INDICES), gl.STATIC_DRAW);
     
     // Unbind
     gl.bindVertexArray(null);
@@ -1552,6 +1673,31 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
 
 	// Draw Each Indexed Point of Logo
     gl.drawElements(gl.LINE_STRIP, config.LINE_RESOLUTION, gl.UNSIGNED_SHORT, 0);
+
+    gl.bindVertexArray(null);
+}
+
+function draw_grid(g_proj_mat, g_view_mat) {
+    let program = prog_grid;
+    program.bind();
+
+    // Send Values to Line Shader
+    gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
+	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+// 	gl.uniform1f(program.uniforms.time, time);
+//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+//     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
+//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+	
+	gl.viewport(0, 0, canvas.width, canvas.height);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.bindVertexArray(vao_grid);
+
+	// Draw Each Indexed Point of Logo
+    gl.drawElements(gl.LINES, 192, gl.UNSIGNED_SHORT, 0);
 
     gl.bindVertexArray(null);
 }
