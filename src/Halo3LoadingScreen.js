@@ -23,7 +23,7 @@ let config = {
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
-	LENGTH_LOGO_WAIT: 22000,
+	LENGTH_LOGO_WAIT: 23000,
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -784,62 +784,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-		if (config.ENABLE_LINES) {
-			for (let x = 0; x < line_heights.length; x++) {
-				draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
-				if (config.ENABLE_LINE_THICKNESS_HACK) {
-
-					// North
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] + config.LINE_OFFSET,
-					    line_radii[x],
-					    line_factors[x]
-					);
-					// Northeast
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] + config.LINE_OFFSET,
-					    line_radii[x] + config.LINE_OFFSET,
-					    line_factors[x]
-					);
-					// East
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x],
-					    line_radii[x] + config.LINE_OFFSET,
-					    line_factors[x]
-					);
-					// Southeast
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] - config.LINE_OFFSET,
-					    line_radii[x] + config.LINE_OFFSET,
-					    line_factors[x]
-					);
-					// South
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] - config.LINE_OFFSET,
-					    line_radii[x],
-					    line_factors[x]
-					);
-					// Southwest
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] - config.LINE_OFFSET,
-					    line_radii[x] - config.LINE_OFFSET,
-					    line_factors[x]
-					);
-					// West
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x],
-					    line_radii[x] - config.LINE_OFFSET,
-					    line_factors[x]
-					);
-					// Northwest
-					draw_line(g_proj_mat, g_view_mat,
-					    line_heights[x] + config.LINE_OFFSET,
-					    line_radii[x] - config.LINE_OFFSET,
-					    line_factors[x]
-					);
-				}
-			}
-		}
+		if (config.ENABLE_LINES) draw_lines();
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
@@ -1525,11 +1470,66 @@ function draw_logo() {
     gl.bindVertexArray(null);
 }
 
+function draw_lines() {
+	for (let x = 0; x < line_heights.length; x++) {
+		draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
+		if (config.ENABLE_LINE_THICKNESS_HACK) {
+
+			// North
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] + config.LINE_OFFSET,
+				line_radii[x],
+				line_factors[x]
+			);
+			// Northeast
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] + config.LINE_OFFSET,
+				line_radii[x] + config.LINE_OFFSET,
+				line_factors[x]
+			);
+			// East
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x],
+				line_radii[x] + config.LINE_OFFSET,
+				line_factors[x]
+			);
+			// Southeast
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] - config.LINE_OFFSET,
+				line_radii[x] + config.LINE_OFFSET,
+				line_factors[x]
+			);
+			// South
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] - config.LINE_OFFSET,
+				line_radii[x],
+				line_factors[x]
+			);
+			// Southwest
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] - config.LINE_OFFSET,
+				line_radii[x] - config.LINE_OFFSET,
+				line_factors[x]
+			);
+			// West
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x],
+				line_radii[x] - config.LINE_OFFSET,
+				line_factors[x]
+			);
+			// Northwest
+			draw_line(g_proj_mat, g_view_mat,
+				line_heights[x] + config.LINE_OFFSET,
+				line_radii[x] - config.LINE_OFFSET,
+				line_factors[x]
+			);
+		}
+	}
+}
+
 function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
     let program = prog_line;
     program.bind();
-
-    //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
 
     // Send Values to Line Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
@@ -1552,8 +1552,6 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
 
 	// Draw Each Indexed Point of Logo
     gl.drawElements(gl.LINE_STRIP, config.LINE_RESOLUTION, gl.UNSIGNED_SHORT, 0);
-
-    //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.bindVertexArray(null);
 }
