@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.0,                                // Speed of animation
+	SPEED: 1.17,                                // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -347,7 +347,7 @@ let vertex_particle = `#version 300 es
 
         // Scale Particles Based on Role
         float ambient_particle_scale = 2.5;
-        float active_particle_scale = 1.15;
+        float active_particle_scale = 1.07;
         if (ambient == 1.0) {
         	gl_PointSize += gl_PointSize * ambient_particle_scale;
         } else {
