@@ -40,12 +40,12 @@ let config = {
     SLICE_WIDTH: 4,                            // Number of particles on top and bottom edges of ring
     SLICE_HEIGHT: NaN,                         // Calculated below: ((SLICE_PARTICLES / 2) - SLICE_WIDTH) + 1
     TEXTURE_SIZE: NaN,                         // Calculated below: ceiling(sqrt(RING_SLICES * SLICE_PARTICLES))
-    PARTICLE_SIZE: 2.4,
+    PARTICLE_SIZE: 2.2,
     PARTICLE_WAIT_VARIATION: 500,              // Amount of random flux in particle wait
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
-    LOGO_SCALE: 0.325,                         // Logo Scale Relative to Screen Size
+    LOGO_SCALE: 0.3,                           // Logo Scale Relative to Screen Size
     LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
     LINE_RESOLUTION: 1951,                     // Points Along Ring Guide Lines (Must Be Odd)
     LINE_OFFSET: .0002,                        // Distance Between Duplicate Guide Lines
@@ -384,9 +384,9 @@ let frag_particle = `#version 300 es
  		
  		// Boost Alpha
         if (ambient != 1.0) {
-        	alpha_final = min(alpha_final * 4.0, 1.0) * 0.55;
+        	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42;
         } else {
-        	alpha_final = min(alpha_final * 1.2, 0.8);
+        	alpha_final = min(alpha_final * 1.3, 0.5) * 0.8;
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
