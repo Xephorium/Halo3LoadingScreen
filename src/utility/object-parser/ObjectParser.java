@@ -6,10 +6,10 @@ import java.util.*;
  *  Christopher Cruzen
  *  06.23.2020
  *
- *  The ObjectParser is a simple utility java class that parses a .obj file, returning
- *  a list of lines as sets of two vertices. Since this tool was built for wireframe
- *  rendering in WebGL, all normal/UV data is discarded and each line is represented by
- *  a distinct set of vertices.  
+ *  The ObjectParser is a simple utility java class that parses an .obj file containing
+ *  a faceless shape. After processing, it returns a list of edges as sets of two vertices.
+ *  Since this tool was built for wireframe rendering in WebGL, all normal/UV data is
+ *  discarded and each edge is represented by a distinct set of vertices.
  *
  *  Source Object File Format:
  *    ...
@@ -17,14 +17,14 @@ import java.util.*;
  *    v 4.0 5.0 6.0    // Vertex 2
  *    v 7.0 8.0 9.0    // Vertex 3
  *    ...
- *    f 1 2 3          // Triangle 1
- *    f 3 1 2          // Triangle 2
- *    f 2 3 1          // Triangle 3
+ *    l 1 2            // Edge 1
+ *    l 2 3            // Edge 2
+ *    l 3 1            // Edge 3
  *
- *  Final Line List Format:
- *    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,  // Triangle 1
- *    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,  // Triangle 2
- *    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,  // Triangle 3
+ *  Final Edge List Format:
+ *    1.0, 2.0, 3.0,  4.0, 5.0, 6.0,  // Edge 1
+ *    4.0, 5.0, 6.0,  7.0, 8.0, 9.0,  // Edge 2
+ *    7.0, 8.0, 9.0,  1.0, 2.0, 3.0,  // Edge 3
  */
 
 
@@ -36,7 +36,7 @@ public class ObjectParser {
         /*--- Variable Declarations ---*/
 
         // Constants
-        String FILE_PATH = "C:\\Users\\Xephorium\\Home\\Projects\\3D Animation\\Blender Projects\\Halo - Loading Screen\\Orientation Test Arrow.obj";
+        String FILE_PATH = "C:\\Users\\Xephorium\\Home\\Projects\\3D Animation\\Blender Projects\\Halo - Loading Screen\\Background Grid.obj";
 
         // Variables
         ArrayList<String> fileLines = new ArrayList<>();
@@ -72,21 +72,16 @@ public class ObjectParser {
         /*--- Build Output List ---*/
 
         for (String line : fileLines) {
-            if (line.charAt(0) == 'f') {
+            if (line.charAt(0) == 'l') {
 
                 // Parse Face Data
-                String faceData = line.substring(2, line.length());
-                String[] faceVertices = faceData.split(" ");
-                int v1 = Integer.valueOf(faceVertices[0]);
-                int v2 = Integer.valueOf(faceVertices[1]);
-                int v3 = Integer.valueOf(faceVertices[2]);
+                String edgeData = line.substring(2, line.length());
+                String[] edgeVertices = edgeData.split(" ");
+                int v1 = Integer.valueOf(edgeVertices[0]);
+                int v2 = Integer.valueOf(edgeVertices[1]);
 
                 // Add Output Line
-                output.add(
-                    vertexList.get(v1 - 1) + " " + vertexList.get(v2 - 1) + " "    // Line 1
-                    + vertexList.get(v2 - 1) + " " + vertexList.get(v3 - 1) + " "  // Line 2
-                    + vertexList.get(v3 - 1) + " " + vertexList.get(v1 - 1) + " "  // Line 3
-                );
+                output.add(vertexList.get(v1 - 1) + " " + vertexList.get(v2 - 1));
             }
         }
 
@@ -97,6 +92,6 @@ public class ObjectParser {
         for (String line : output) {
             System.out.println(line);
         }
-        System.out.println("Total Vertices: " + output.size() * 6);
+        System.out.println("Total Vertices: " + output.size() * 2);
     }
 }
