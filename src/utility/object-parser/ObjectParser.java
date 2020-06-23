@@ -89,8 +89,10 @@ public class ObjectParser {
 
         /*--- Print Output ---*/
 
+        System.out.println("Vertex List: ");
         for (String line : output) {
             System.out.println(line);
         }
+        System.out.println("Triangles: " + output.size());
     }
 }
