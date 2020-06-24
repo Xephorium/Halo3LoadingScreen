@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 2.3,                                // Speed of animation
+	SPEED: 1.17,                               // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -33,7 +33,7 @@ let config = {
 	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
-    AMBIENT_PARTICLES: 20000,
+    AMBIENT_PARTICLES: 30000,
     AMBIENT_WIDTH: 5,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 1.2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
@@ -650,6 +650,12 @@ let vertex_grid = `#version 300 es
 	in vec4 vertex_position;
 	uniform mat4 u_proj_mat;
 	uniform mat4 u_view_mat;
+	uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_ring_assembly;
+	uniform float length_scene_fade;
 	uniform float scale;
 	uniform float alpha;
 	uniform float visibility;
@@ -657,8 +663,20 @@ let vertex_grid = `#version 300 es
 	// Output Variables
 	out float alpha_frag;
 	out float visibility_frag;
+	out float scene_fade_factor;
 
 	void main() {
+
+		// Calculate Time
+        float temp = mod(time, length_start_delay + length_loop);
+        float delay_time = max(temp - length_start_delay, 0.0);
+
+        // Calculate Scene Fade Factors
+        float scene_fade_in_factor = min(delay_time / length_scene_fade, 1.0);
+        float scene_fade_out_factor = 1.0;
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
 
 		// Set Point Position
 		vec4 pos = vec4(vertex_position[0] * scale, vertex_position[1] * scale, vertex_position[2] * scale, 1.0);
@@ -667,6 +685,7 @@ let vertex_grid = `#version 300 es
 		// Pass Fragment Values
 		alpha_frag = alpha;
 		visibility_frag = visibility;
+		scene_fade_factor = scene_fade_in_factor * scene_fade_out_factor;
 	}
 `;
 
@@ -676,29 +695,14 @@ let frag_grid = `#version 300 es
 	// Input Variables
 	in float alpha_frag;
 	in float visibility_frag;
-// 	uniform float time;
-// 	uniform float length_loop;
-// 	uniform float length_start_delay;
-// 	uniform float length_slice_assembly;
-// 	uniform float length_ring_assembly;
-// 	uniform float length_scene_fade;
+	in float scene_fade_factor;
 
 	// Output Variables
 	out vec4 cg_FragColor;
 
 	void main() {
 
-		// Calculate Time
-// 		float temp = mod(time, length_start_delay + length_loop);
-// 		float delay_time = max(temp - length_start_delay, 0.0);
-
-// 		// Calculate & Send Fragment Shader Variables
-// 		float scene_fade_out_factor = 1.0;
-//         if (delay_time > length_loop - length_scene_fade) {
-//             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
-//         }
-
-		cg_FragColor = vec4(0.45, 0.8, 1.0, alpha_frag * visibility_frag);
+		cg_FragColor = vec4(0.45, 0.8, 1.0, alpha_frag * visibility_frag * scene_fade_factor);
     }
 `;
 
@@ -1706,12 +1710,12 @@ function draw_grid(g_proj_mat, g_view_mat, scale, visibility) {
 		// Send Values to Line Shader
 		gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 		gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
-	// 	gl.uniform1f(program.uniforms.time, time);
-	//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
-	//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
-	//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
-	//     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
-	//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+		gl.uniform1f(program.uniforms.time, time);
+	    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+	    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+	    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+	    gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
+	    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
         gl.uniform1f(program.uniforms.scale, scale);
         gl.uniform1f(program.uniforms.alpha, config.BACKGROUND_GRID_ALPHA);
         gl.uniform1f(program.uniforms.visibility, visibility);
