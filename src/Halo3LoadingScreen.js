@@ -28,7 +28,8 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
-	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
+	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
+	BACKGROUND_GRID_ALPHA: 0.027,
 	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -649,11 +650,23 @@ let vertex_grid = `#version 300 es
 	in vec4 vertex_position;
 	uniform mat4 u_proj_mat;
 	uniform mat4 u_view_mat;
+	uniform float scale;
+	uniform float alpha;
+	uniform float visibility;
+
+	// Output Variables
+	out float alpha_frag;
+	out float visibility_frag;
 
 	void main() {
 
 		// Set Point Position
-		gl_Position = u_proj_mat * u_view_mat * vertex_position;
+		vec4 pos = vec4(vertex_position[0] * scale, vertex_position[1] * scale, vertex_position[2] * scale, 1.0);
+		gl_Position = u_proj_mat * u_view_mat * pos;
+
+		// Pass Fragment Values
+		alpha_frag = alpha;
+		visibility_frag = visibility;
 	}
 `;
 
@@ -661,6 +674,8 @@ let frag_grid = `#version 300 es
 	precision mediump float;
 
 	// Input Variables
+	in float alpha_frag;
+	in float visibility_frag;
 // 	uniform float time;
 // 	uniform float length_loop;
 // 	uniform float length_start_delay;
@@ -683,7 +698,7 @@ let frag_grid = `#version 300 es
 //             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
 //         }
 
-		cg_FragColor = vec4(0.45, 0.8, 1.0, 0.1);
+		cg_FragColor = vec4(0.45, 0.8, 1.0, alpha_frag * visibility_frag);
     }
 `;
 
@@ -838,7 +853,11 @@ function main () {
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
 		if (config.ENABLE_LINES) draw_lines();
-		if (config.ENABLE_BACKGROUND_GRID) draw_grid(g_proj_mat, g_view_mat);
+		if (config.ENABLE_BACKGROUND_GRID) {
+			draw_grid(g_proj_mat, g_view_mat, 1.0, 1.0);
+			draw_grid(g_proj_mat, g_view_mat, 1.5, 0.75);
+			draw_grid(g_proj_mat, g_view_mat, 2.0, 0.5);
+		}
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
@@ -1677,7 +1696,7 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
     gl.bindVertexArray(null);
 }
 
-function draw_grid(g_proj_mat, g_view_mat) {
+function draw_grid(g_proj_mat, g_view_mat, scale, visibility) {
 	let program = prog_grid;
 	program.bind();
 	
@@ -1693,6 +1712,9 @@ function draw_grid(g_proj_mat, g_view_mat) {
 	//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
 	//     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
 	//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+        gl.uniform1f(program.uniforms.scale, scale);
+        gl.uniform1f(program.uniforms.alpha, config.BACKGROUND_GRID_ALPHA);
+        gl.uniform1f(program.uniforms.visibility, visibility);
 
 		gl.viewport(0, 0, canvas.width, canvas.height);
 
