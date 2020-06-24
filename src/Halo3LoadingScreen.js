@@ -81,7 +81,8 @@ let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
 let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
 let vao_line;                   // VAO For Drawing Single Ring Line Path
-let vao_grid;                   // VAO For Drawing Background Grid
+let vao_grid_list = [];         // VAOs For Drawing Background Grid
+let vao_grid_indices = [];      // VAO Indices for Drawing Background Grid
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -91,7 +92,7 @@ let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
 let prog_blocks;                // Block Renderer
 let prog_logo;                  // Logo Renderer
-let prog_grid;                  // Grid Renderer
+let prog_grid_list = [];        // Grid Renderers
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -718,7 +719,6 @@ function main () {
     prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
     prog_logo = new GLProgram(vertex_logo, frag_logo);
     prog_line = new GLProgram(vertex_line, frag_line);
-    prog_grid = new GLProgram(vertex_grid, frag_grid);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -757,7 +757,7 @@ function main () {
     create_ring_block_vertex_array_object(pa);
     create_logo_vertex_array_object();
     create_line_vertex_array_object();
-    create_grid_vertex_array_object();
+    create_grid_vertex_array_objects();
 
     // Create Buffers (Define Input Coordinates for Shaders)
    	initialize_buffers(prog_particle); 
@@ -1175,7 +1175,7 @@ function create_line_vertex_array_object () {
 }
 
 // Note: This VertexArrayObject contains a list of all vertices in the background grid.
-function create_grid_vertex_array_object () {
+function create_grid_vertex_array_objects () {
 
     /* Variable Declarations */
 
@@ -1195,24 +1195,57 @@ function create_grid_vertex_array_object () {
 
     /* VAO Construction */
 
-	// Create Vertex Array Object
-    vao_grid = gl.createVertexArray();
-    gl.bindVertexArray(vao_grid);
+    let currentVertex = 0;
+    let batchSize = 3 * 2 * 15000; // 3 values per vertex * 2 vertices per line * 7 lines
+    let currentVAO = 0;
+    while (currentVertex < (BackgroundGrid.getVertexCount() * 3)) {
 
-    // Create Vertex Buffer
-    let vertex_buffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(GRID_VERTICES),gl.STATIC_DRAW);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(prog_grid.uniforms.vertex_position);
+    	// Create Program
+    	prog_grid_list[currentVAO] = new GLProgram(vertex_grid, frag_grid);
 
-    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
-    let vertex_element_buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(GRID_INDICES), gl.STATIC_DRAW);
-    
-    // Unbind
-    gl.bindVertexArray(null);
+        // Create Vertex Sub-List
+        let currentVertices = [];
+        let startingVertex = currentVertex;
+        vao_grid_indices[currentVAO] = 0;
+        for (let x = startingVertex; x < startingVertex + batchSize; x++) {
+        	if (x < GRID_VERTICES.length) {
+        	    currentVertices.push(GRID_VERTICES[x]);
+        	    currentVertex++;
+        	    vao_grid_indices[currentVAO] = vao_grid_indices[currentVAO] + 1;
+        	}
+        }
+
+        // Create Index List
+        let currentIndices = [];
+        for (let x = 0; x < currentVertices.length; x++) {
+        	currentIndices.push(x);
+        }
+
+        console.log(currentVAO);
+        console.log(vao_grid_indices[currentVAO]);
+        console.log(currentVertices);
+
+    	// Create Vertex Array Object
+		vao_grid_list[currentVAO] = gl.createVertexArray();
+		gl.bindVertexArray(vao_grid_list[currentVAO]);
+
+		// Create Vertex Buffer
+		let vertex_buffer = gl.createBuffer()
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+		gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(currentVertices),gl.STATIC_DRAW);
+		gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(prog_grid_list[currentVAO].uniforms.vertex_position);
+
+		// Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+		let vertex_element_buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(currentIndices), gl.STATIC_DRAW);
+
+		// Unbind
+		gl.bindVertexArray(null);
+
+		currentVAO++;
+    }
 }
 
 
@@ -1650,28 +1683,31 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
 }
 
 function draw_grid(g_proj_mat, g_view_mat) {
-    let program = prog_grid;
-    program.bind();
 
-    // Send Values to Line Shader
-    gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
-	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
-// 	gl.uniform1f(program.uniforms.time, time);
-//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
-//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
-//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
-//     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
-//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
-	
-	gl.viewport(0, 0, canvas.width, canvas.height);
-	
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-	gl.bindVertexArray(vao_grid);
+	for (let x = 0; x < vao_grid_list.length; x++) {
+		let program = prog_grid_list[x];
+		program.bind();
 
-	// Draw Each Indexed Point of Logo
-    gl.drawElements(gl.LINES, BackgroundGrid.getVertexCount(), gl.UNSIGNED_SHORT, 0);
+		// Send Values to Line Shader
+		gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
+		gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+	// 	gl.uniform1f(program.uniforms.time, time);
+	//     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+	//     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+	//     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+	//     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
+	//     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
 
-    gl.bindVertexArray(null);
+		gl.viewport(0, 0, canvas.width, canvas.height);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		gl.bindVertexArray(vao_grid_list[x]);
+
+		// Draw Each Indexed Point of Logo
+		gl.drawElements(gl.LINES, vao_grid_indices[x] / 3, gl.UNSIGNED_SHORT, 0);
+
+		gl.bindVertexArray(null);
+	}
 }
 
 function draw_particles (position, data_dynamic, data_static, pa) {
