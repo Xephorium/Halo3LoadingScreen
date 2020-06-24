@@ -27,7 +27,7 @@ let config = {
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
+	RESOLUTION_SCALE: 1.34,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
 	BACKGROUND_GRID_ALPHA: 0.027,
 	BACKGROUND_GRID_SCALE: 0.05,
@@ -606,7 +606,7 @@ let vertex_line = `#version 300 es
 		// Calculate & Send Fragment Shader Variables
 		float scene_fade_out_factor = 1.0;
         if (delay_time > length_loop - length_scene_fade) {
-            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+            scene_fade_out_factor = max((length_loop - delay_time) / length_start_delay, 0.0);
         }
         scene_fade_out_factor_frag = scene_fade_out_factor;
         line_thickness_hack_frag = line_thickness_hack;
