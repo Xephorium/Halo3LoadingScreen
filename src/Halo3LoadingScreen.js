@@ -635,7 +635,7 @@ let frag_line = `#version 300 es
 	void main() {
 
 		// Calculate Line Visibility
-		float line_alpha = 0.12 * scene_fade_out_factor_frag;
+		float line_alpha = 0.13 * scene_fade_out_factor_frag;
 
 		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
     }
