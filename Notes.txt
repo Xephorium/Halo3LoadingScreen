@@ -171,6 +171,17 @@ Data Static
   https://community.khronos.org/t/texture-coordinates-per-face-index-instead-of-per-vertex/2484
   https://stackoverflow.com/questions/36532924/how-can-i-specify-multiple-uv-coordinates-for-same-vertexes-with-vaos-vbos
 
+06.23.2020
+  I've done a pretty decent job of sidestepping WebGL's vertex limit for a single draw call up
+  until now. For block rendering, I found a neat extension ('OES_element_index_uint') that
+  increases the buffer size from 16 to 32 bits. This was apparently ample room to draw all ring
+  blocks at once. But, even the increased buffer size isn't enough for the massive geometry of the
+  background grid. 319,264 unique points. Even Sublime churns for a few seconds opening the file.
+  Rather than continuing to search for workarounds, I've finally accepted the limitation. Today's
+  commit adds logic to dynamically build a list of VAO's, each with a predefined max size, to render
+  the entire grid through multiple draw calls. The result is glorious. ~150,000 lines drawn on screen
+  with no framerate drop. I love this hobby.
+
 
 /*--- Resources & Factoids ---*/
 

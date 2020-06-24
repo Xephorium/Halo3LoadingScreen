@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.17,                               // Speed of animation
+	SPEED: 2.3,                                // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -29,7 +29,7 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.1, 0.115, .15, 1.0],
-	BACKGROUND_GRID_SCALE: 0.0005,
+	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
     AMBIENT_PARTICLES: 20000,
@@ -81,8 +81,9 @@ let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
 let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
 let vao_line;                   // VAO For Drawing Single Ring Line Path
-let vao_grid_list = [];         // VAOs For Drawing Background Grid
-let vao_grid_indices = [];      // VAO Indices for Drawing Background Grid
+
+let grid_vao_list = [];         // List of VAO's Needed to Draw Background Grid
+let grid_vao_size = [];         // List of VAO Sizes of Background Grid
 
 let uv_coord_data_buffer;       // Contains UV coordinates for each pixel in particle data textures 
 
@@ -92,7 +93,7 @@ let prog_position;              // Particle Position Updater
 let prog_data;                  // Particle Data Updater
 let prog_blocks;                // Block Renderer
 let prog_logo;                  // Logo Renderer
-let prog_grid_list = [];        // Grid Renderers
+let prog_grid;                  // Grid Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -682,7 +683,7 @@ let frag_grid = `#version 300 es
 //             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
 //         }
 
-		cg_FragColor = vec4(0.45, 0.8, 1.0, 1.0);
+		cg_FragColor = vec4(0.45, 0.8, 1.0, 0.1);
     }
 `;
 
@@ -719,6 +720,7 @@ function main () {
     prog_blocks = new GLProgram(vertex_blocks, frag_blocks);
     prog_logo = new GLProgram(vertex_logo, frag_logo);
     prog_line = new GLProgram(vertex_line, frag_line);
+    prog_grid = new GLProgram(vertex_grid, frag_grid);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -1174,12 +1176,17 @@ function create_line_vertex_array_object () {
     gl.bindVertexArray(null);
 }
 
-// Note: This VertexArrayObject contains a list of all vertices in the background grid.
+// Note: Unlike the other VAO construction methods of this program, this method
+//       dynamically splits the geometry of the background grid into chunks.
+//       This is done to get around WebGL's hard limit on the number of vertices
+//       that can be rendered in a single draw call. Each of these vertex chunks
+//       is stored in a distinct VAO, with all VAO's being drawn in sequence at 
+//       render time. 
 function create_grid_vertex_array_objects () {
 
     /* Variable Declarations */
 
-    // Grid Vertices
+    // Retrieve Grid Vertices
     let GRID_VERTICES = BackgroundGrid.getVertices();
 
     // Adjust Grid Scale
@@ -1187,64 +1194,52 @@ function create_grid_vertex_array_objects () {
     	GRID_VERTICES[x] = GRID_VERTICES[x] * config.BACKGROUND_GRID_SCALE;
     }
 
-    // Grid Index Array
-    let GRID_INDICES = [];
-    for (let x = 0; x < BackgroundGrid.getVertexCount(); x++) {
-    	GRID_INDICES.push(x);
-    }
-
     /* VAO Construction */
 
-    let currentVertex = 0;
-    let batchSize = 3 * 2 * 15000; // 3 values per vertex * 2 vertices per line * 7 lines
-    let currentVAO = 0;
-    while (currentVertex < (BackgroundGrid.getVertexCount() * 3)) {
+    let currentIndex = 0;
+    let chunkSize = 3 * 2 * 15000; // 3 values * 2 vertices per line * 15,000 = 90,000 numbers per chunk
+    let currentChunk = 0;
+    while (currentIndex < BackgroundGrid.getVertexCount() * 3) {
 
-    	// Create Program
-    	prog_grid_list[currentVAO] = new GLProgram(vertex_grid, frag_grid);
-
-        // Create Vertex Sub-List
-        let currentVertices = [];
-        let startingVertex = currentVertex;
-        vao_grid_indices[currentVAO] = 0;
-        for (let x = startingVertex; x < startingVertex + batchSize; x++) {
+        // Create Chunk Vertex List & Size Value
+        let chunkVertices = [];
+        let chunkStartIndex = currentIndex;
+        grid_vao_size[currentChunk] = 0;
+        for (let x = chunkStartIndex; x < chunkStartIndex + chunkSize; x++) {
         	if (x < GRID_VERTICES.length) {
-        	    currentVertices.push(GRID_VERTICES[x]);
-        	    currentVertex++;
-        	    vao_grid_indices[currentVAO] = vao_grid_indices[currentVAO] + 1;
+        	    chunkVertices.push(GRID_VERTICES[x]);
+        	    currentIndex++;
+        	    grid_vao_size[currentChunk] = grid_vao_size[currentChunk] + 1;
         	}
         }
+        grid_vao_size[currentChunk] = grid_vao_size[currentChunk] / 3;
 
-        // Create Index List
-        let currentIndices = [];
-        for (let x = 0; x < currentVertices.length; x++) {
-        	currentIndices.push(x);
+        // Create Chunk Index List
+        let chunkIndices = [];
+        for (let x = 0; x < chunkVertices.length; x++) {
+        	chunkIndices.push(x);
         }
 
-        console.log(currentVAO);
-        console.log(vao_grid_indices[currentVAO]);
-        console.log(currentVertices);
-
     	// Create Vertex Array Object
-		vao_grid_list[currentVAO] = gl.createVertexArray();
-		gl.bindVertexArray(vao_grid_list[currentVAO]);
+		grid_vao_list[currentChunk] = gl.createVertexArray();
+		gl.bindVertexArray(grid_vao_list[currentChunk]);
 
 		// Create Vertex Buffer
 		let vertex_buffer = gl.createBuffer()
 		gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-		gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(currentVertices),gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(chunkVertices),gl.STATIC_DRAW);
 		gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-		gl.enableVertexAttribArray(prog_grid_list[currentVAO].uniforms.vertex_position);
+		gl.enableVertexAttribArray(prog_grid.uniforms.vertex_position);
 
 		// Create Vertex Element Buffer (Specifies Shared Vertices by Index)
 		let vertex_element_buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
-		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(currentIndices), gl.STATIC_DRAW);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(chunkIndices), gl.STATIC_DRAW);
 
 		// Unbind
 		gl.bindVertexArray(null);
 
-		currentVAO++;
+		currentChunk++;
     }
 }
 
@@ -1683,10 +1678,11 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
 }
 
 function draw_grid(g_proj_mat, g_view_mat) {
-
-	for (let x = 0; x < vao_grid_list.length; x++) {
-		let program = prog_grid_list[x];
-		program.bind();
+	let program = prog_grid;
+	program.bind();
+	
+	// Draw Each Subsection of Grid as Seprarate VAO 
+	for (let x = 0; x < grid_vao_list.length; x++) {
 
 		// Send Values to Line Shader
 		gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
@@ -1701,10 +1697,10 @@ function draw_grid(g_proj_mat, g_view_mat) {
 		gl.viewport(0, 0, canvas.width, canvas.height);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		gl.bindVertexArray(vao_grid_list[x]);
+		gl.bindVertexArray(grid_vao_list[x]);
 
 		// Draw Each Indexed Point of Logo
-		gl.drawElements(gl.LINES, vao_grid_indices[x] / 3, gl.UNSIGNED_SHORT, 0);
+		gl.drawElements(gl.LINES, grid_vao_size[x], gl.UNSIGNED_SHORT, 0);
 
 		gl.bindVertexArray(null);
 	}
