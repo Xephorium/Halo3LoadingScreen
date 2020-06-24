@@ -353,7 +353,7 @@ let vertex_particle = `#version 300 es
         }
 
         // Scale Particles Based on Role
-        float ambient_particle_scale = 2.5;
+        float ambient_particle_scale = 2.75;
         float active_particle_scale = 1.07;
         if (ambient == 1.0) {
         	gl_PointSize += gl_PointSize * ambient_particle_scale;
