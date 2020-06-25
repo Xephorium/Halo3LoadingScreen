@@ -27,7 +27,7 @@ let config = {
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 1.34,                     // Default: 1080p
+	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
 	BACKGROUND_GRID_ALPHA: 0.029,
 	BACKGROUND_GRID_SCALE: 0.05,
