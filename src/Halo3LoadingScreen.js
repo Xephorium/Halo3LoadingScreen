@@ -58,7 +58,10 @@ let config = {
     ENABLE_LOGO: true,                         // whether to render logo
     ENABLE_LINES: true,                        // Whether to render guide lines
     ENABLE_LINE_THICKNESS_HACK: true,          // Whether to render duplicate guide lines
-    ENABLE_BACKGROUND_GRID: true               // Whether to render background grid
+    ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
+
+    TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
+    TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png"
 }
 
 // Generated Global Initialization
@@ -726,8 +729,8 @@ function main () {
     gl.enable(gl.BLEND);
 
     // Begin Loading Textures
-    ImageLoader.loadImage(gl, texture_list, "../res/Block Texture.png", 0);
-    ImageLoader.loadImage(gl, texture_list, "../res/Corner Logo Bungie.png", 7);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_BLOCK, 0);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO, 7);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
