@@ -29,7 +29,7 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
-	BACKGROUND_GRID_ALPHA: 0.029,
+	BACKGROUND_GRID_ALPHA: 0.031,
 	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
