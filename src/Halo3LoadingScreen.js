@@ -23,13 +23,13 @@ let config = {
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
-	LENGTH_LOGO_WAIT: 23000,
+	LENGTH_LOGO_WAIT: 17500,
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
-	BACKGROUND_GRID_ALPHA: 0.031,
+	BACKGROUND_GRID_ALPHA: 0.037,
 	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -110,9 +110,9 @@ let texture_list = [];
 
 let camera_pos = [];
 let camera_pos_control_points = [
-    [-2.4, -0.2, 1.8],
-    [-2.1,  .05, 3.0],
-    [  .5,  .15, 5.2],
+    [-2.5, -0.2, 1.3],
+    [-2.5,  .05, 2.9],
+    [  .7,  .15, 5.3],
     [ 2.2,  .25,   2],
     [ 2.5, 0.15,   1]
 ];
@@ -120,8 +120,8 @@ let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
     [  -3,    0,   0],
-    [-2.1,    0, 3.3],
-    [ 2.8, -.02, 3.3],
+    [-2.2,    0, 3.3],
+    [ 2.83, -.02, 3.3],
     [   3,  -.1, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
@@ -396,7 +396,7 @@ let frag_particle = `#version 300 es
         if (ambient != 1.0) {
         	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42;
         } else {
-        	alpha_final = min(alpha_final * 1.3, 0.5) * 0.8;
+        	alpha_final = min(alpha_final * 1.3, 0.5) * 0.87;
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
@@ -481,7 +481,7 @@ let frag_blocks = `#version 300 es
 			// Adjust Alpha for Highlight
 			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
 			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
-			block_alpha += ((1.0 - block_highlight_factor) / 35.0) * (block_fade_factor * highlight_alpha * 8.5);
+			block_alpha += ((1.0 - block_highlight_factor) / 33.5) * (block_fade_factor * highlight_alpha * 8.5);
 		}
 
         cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
