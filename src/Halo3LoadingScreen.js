@@ -29,11 +29,13 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
-	BACKGROUND_GRID_ALPHA: 0.045,
+	BACKGROUND_GRID_ALPHA: 0.055,
 	BACKGROUND_GRID_SCALE: 0.05,
+	VINGETTE_FACTOR: 0.7,
+	VINGETTE_COLOR: [0.02, 0.025, .04, 1.0],
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
-    AMBIENT_PARTICLES: 30000,
+    AMBIENT_PARTICLES: 50000,
     AMBIENT_WIDTH: 5,                          // Horizontal area in which ambient particles are rendered
     AMBIENT_HEIGHT: 1.2,                       // Vertical area in which ambient particles are rendered
     AMBIENT_DRIFT: 0.8,                        // Speed at which ambient particles randomly move
@@ -62,7 +64,7 @@ let config = {
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
-    TEXTURE_VINGETTE: "https://github.com/Xephorium/Halo3LoadingScreen/blob/master/res/Vingette%20Alpha.png"
+    TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
 
 // Generated Global Initialization
@@ -399,7 +401,7 @@ let frag_particle = `#version 300 es
         if (ambient != 1.0) {
         	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42;
         } else {
-        	alpha_final = min(alpha_final * 1.3, 0.5) * 0.87;
+        	alpha_final = min(alpha_final * 1.3, 0.5) * 0.95;
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
@@ -742,6 +744,8 @@ let frag_vingette = `#version 300 es
 	uniform float length_start_delay;
 	uniform float length_slice_assembly;
 	uniform float length_scene_fade;
+	uniform float vingette_factor;
+	uniform vec4 vingette_color;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -760,7 +764,7 @@ let frag_vingette = `#version 300 es
             scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
         }
 
-		cg_FragColor = vec4(0.02, 0.025, .04, vingette_alpha * scene_fade_in_factor * scene_fade_out_factor);
+		cg_FragColor = vec4(vingette_color[0], vingette_color[1], vingette_color[2], vingette_alpha * vingette_factor * scene_fade_in_factor * scene_fade_out_factor);
     }
 `;
 
@@ -1869,6 +1873,8 @@ function draw_vingette() {
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.vingette_factor, config.VINGETTE_FACTOR);
+    gl.uniform4fv(program.uniforms.vingette_color, config.VINGETTE_COLOR);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
