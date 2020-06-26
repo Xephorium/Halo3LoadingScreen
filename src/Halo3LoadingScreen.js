@@ -62,7 +62,7 @@ let config = {
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
-    TEXTURE_VINGETTE: "res/Vingette Alpha.png"
+    TEXTURE_VINGETTE: "https://github.com/Xephorium/Halo3LoadingScreen/blob/master/res/Vingette%20Alpha.png"
 }
 
 // Generated Global Initialization
