@@ -29,7 +29,7 @@ let config = {
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
 	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
-	BACKGROUND_GRID_ALPHA: 0.037,
+	BACKGROUND_GRID_ALPHA: 0.045,
 	BACKGROUND_GRID_SCALE: 0.05,
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
@@ -61,7 +61,8 @@ let config = {
     ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
-    TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png"
+    TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
+    TEXTURE_VINGETTE: "res/Vingette Alpha.png"
 }
 
 // Generated Global Initialization
@@ -85,6 +86,7 @@ let vao_data_texture;           // VAO For Drawing Data Textures (2 Triangles)
 let vao_blocks;                 // VAO For Drawing Ring Blocks
 let vao_logo;                   // VAO For Drawing Halo Logo (2 Triangles)
 let vao_line;                   // VAO For Drawing Single Ring Line Path
+let vao_vingette;               // VAO For Drawing Background Vingette 
 
 let grid_vao_list = [];         // List of VAO's Needed to Draw Background Grid
 let grid_vao_size = [];         // List of VAO Sizes of Background Grid
@@ -98,6 +100,7 @@ let prog_data;                  // Particle Data Updater
 let prog_blocks;                // Block Renderer
 let prog_logo;                  // Logo Renderer
 let prog_grid;                  // Grid Renderer
+let prog_vingette;              // Vingette Renderer
 
 let fbo_pos_initial;            // Particle Initial Position
 let fbo_pos_swerve;             // Particle Swerve Position
@@ -709,6 +712,58 @@ let frag_grid = `#version 300 es
     }
 `;
 
+let vertex_vingette = `#version 300 es
+
+  // Input Variables
+  in vec4 a_position;
+  in vec2 uv_coordinate;
+
+  // Output Variables
+  out vec2 uv_coordinate_frag;
+  
+  void main() {
+
+    // Set Vertex Position
+    gl_Position = a_position;
+
+    // Pass Fragment Shader UV Coordinates
+    uv_coordinate_frag = uv_coordinate;
+  }
+`;
+
+let frag_vingette = `#version 300 es
+	precision mediump float;
+
+	// Input Variables
+	in vec2 uv_coordinate_frag;
+	uniform sampler2D vingette_texture;
+	uniform float time;
+	uniform float length_loop;
+	uniform float length_start_delay;
+	uniform float length_slice_assembly;
+	uniform float length_scene_fade;
+
+	// Output Variables
+	out vec4 cg_FragColor;
+
+	void main() {
+
+		// Local Variables
+		float vingette_alpha = texture(vingette_texture, uv_coordinate_frag).r;
+		float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
+
+        // Calculate Scene Fade Factors
+        float scene_fade_in_factor = min(delay_time / length_scene_fade, 1.0);
+        float scene_fade_out_factor = 1.0;
+        if (delay_time > length_loop - length_scene_fade) {
+            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
+        }
+
+		cg_FragColor = vec4(0.02, 0.025, .04, vingette_alpha * scene_fade_in_factor * scene_fade_out_factor);
+    }
+`;
+
 
 /*--- Main Program ---*/
 
@@ -731,6 +786,7 @@ function main () {
     // Begin Loading Textures
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_BLOCK, 0);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO, 7);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_VINGETTE, 8);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -743,6 +799,7 @@ function main () {
     prog_logo = new GLProgram(vertex_logo, frag_logo);
     prog_line = new GLProgram(vertex_line, frag_line);
     prog_grid = new GLProgram(vertex_grid, frag_grid);
+    prog_vingette = new GLProgram(vertex_vingette, frag_vingette);
     prog_particle = new GLProgram(vertex_particle, frag_particle);
 	prog_particle.bind();
 
@@ -782,6 +839,7 @@ function main () {
     create_logo_vertex_array_object();
     create_line_vertex_array_object();
     create_grid_vertex_array_objects();
+    create_vingette_vertex_array_object();
 
     // Create Buffers (Define Input Coordinates for Shaders)
    	initialize_buffers(prog_particle); 
@@ -865,6 +923,7 @@ function main () {
 			draw_grid(g_proj_mat, g_view_mat, 1.5, 0.75);
 			draw_grid(g_proj_mat, g_view_mat, 2.0, 0.5);
 		}
+		draw_vingette();
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
 		if (config.ENABLE_LOGO) draw_logo();
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
@@ -948,7 +1007,6 @@ function create_data_texture_vertex_array_object () {
     
     // Unbind
     gl.bindVertexArray(null);
-
 }
 
 // Note: This VertexArrayObject contains the vertices and shared vertex indices
@@ -1267,6 +1325,71 @@ function create_grid_vertex_array_objects () {
 
 		currentChunk++;
     }
+}
+
+// Note: This VertexArrayObject contains a square consisting of two triangles,
+//       on which the vingette effect is drawn.
+function create_vingette_vertex_array_object () {
+
+	/* Variable Declarations */
+
+    /* Vingette Vertices
+     *
+     *  v1-------v2   v4
+     *  |       /    / |
+     *  |     /    /   |
+     *  |   /    /     |
+     *  | /    /       |
+     *  v0   v3-------v5
+     *
+	 *
+	 * Note: This vertex list contains three vertices for each of the 2 triangles
+	 *       in the plane on which the vingette effect is drawn.
+	 */
+    let VINGETTE_VERTICES = [
+        -1, -1,  -1,  1,   1,  1, // Left Triangle 
+        -1, -1,   1,  1,   1, -1  // Right Triangle
+    ];
+
+    /* Vingette UV's
+	 * Note: This uv list contains an x and y coordinate for each vertex in the
+	 *       list above. The order of the two lists matches.
+	 */
+    let VINGETTE_UVS = [
+		0,0, 0,1, 1,1, // Left Triangle 
+        0,0, 1,1, 1,0  // Right Triangle
+    ];
+
+    // Vingette Index Array
+    let VINGETTE_INDICES = [0, 1, 2, 3, 4, 5];
+
+    /* VAO Construction */
+
+	// Create Vertex Array Object
+    vao_vingette = gl.createVertexArray();
+    gl.bindVertexArray(vao_vingette);
+
+    // Create Vertex Buffer
+    let vertex_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(VINGETTE_VERTICES),gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog_vingette.uniforms.a_position);
+
+    // Create UV Buffer
+    let uv_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, uv_buffer);
+    gl.enableVertexAttribArray(prog_vingette.attributes.uv_coordinate);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(VINGETTE_UVS), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+
+    // Create Vertex Element Buffer (Specifies Shared Vertices by Index)
+    let vertex_element_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertex_element_buffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(VINGETTE_INDICES), gl.STATIC_DRAW);
+    
+    // Unbind
+    gl.bindVertexArray(null);
 }
 
 
@@ -1733,6 +1856,29 @@ function draw_grid(g_proj_mat, g_view_mat, scale, visibility) {
 
 		gl.bindVertexArray(null);
 	}
+}
+
+function draw_vingette() {
+    let program = prog_vingette;
+    program.bind();
+
+    // Send Values to Logo Shader
+    gl.uniform1i(program.uniforms.vingette_texture, 8);
+	gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
+    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
+    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+	
+	gl.viewport(0, 0, canvas.width, canvas.height);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.bindVertexArray(vao_vingette);
+
+	// Draw Each Indexed Point of Logo
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+    gl.bindVertexArray(null);
 }
 
 function draw_particles (position, data_dynamic, data_static, pa) {
