@@ -116,7 +116,7 @@ let texture_list = [];
 let camera_pos = [];
 let camera_pos_control_points = [
     [-2.5, -0.2, 1.3],
-    [-2.5,  .05, 2.9],
+    [-2.5, 0.13, 2.9],
     [  .7,  .15, 5.3],
     [ 2.2,  .25,   2],
     [ 2.5, 0.15,   1]
@@ -124,10 +124,10 @@ let camera_pos_control_points = [
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
-    [  -3,    0,   0],
-    [-2.2,    0, 3.3],
+    [   -3,    0,   0],
+    [ -2.2,  .02, 3.3],
     [ 2.83, -.02, 3.3],
-    [   3,  -.1, -.5]
+    [    3,  -.1, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 
