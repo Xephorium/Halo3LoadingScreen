@@ -590,6 +590,8 @@ let vertex_line = `#version 300 es
 	in vec4 vertex_angle;
 	uniform mat4 u_proj_mat;
 	uniform mat4 u_view_mat;
+	uniform float scene_fade_in_factor;
+	uniform float scene_fade_out_factor;
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -599,11 +601,9 @@ let vertex_line = `#version 300 es
 	uniform float line_height;
 	uniform float line_radius;
 	uniform float line_factor;
-	uniform float line_thickness_hack;
 
 	// Output Variables
 	out float scene_fade_out_factor_frag;
-	out float line_thickness_hack_frag;
 
 	void main() {
 
@@ -617,7 +617,6 @@ let vertex_line = `#version 300 es
             scene_fade_out_factor = max((length_loop - delay_time) / length_start_delay, 0.0);
         }
         scene_fade_out_factor_frag = scene_fade_out_factor;
-        line_thickness_hack_frag = line_thickness_hack;
 
         // Calculate Completion Factor
         float ring_assembly_factor = max((delay_time - 3.0 * length_start_delay) / length_ring_assembly, 0.0);
@@ -638,7 +637,6 @@ let frag_line = `#version 300 es
 
 	// Input Variables
 	in float scene_fade_out_factor_frag;
-	in float line_thickness_hack_frag;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -918,7 +916,7 @@ function main () {
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
 		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
-		if (config.ENABLE_LINES) draw_lines();
+		if (config.ENABLE_LINES) draw_lines(scene_fade_in, scene_fade_out);
 		if (config.ENABLE_BACKGROUND_GRID) {
 			draw_grid(g_proj_mat, g_view_mat, 1.0, 1.0, scene_fade_in, scene_fade_out);
 			draw_grid(g_proj_mat, g_view_mat, 1.5, 0.75, scene_fade_in, scene_fade_out);
@@ -1741,7 +1739,7 @@ function draw_logo() {
     gl.bindVertexArray(null);
 }
 
-function draw_lines() {
+function draw_lines(scene_fade_in, scene_fade_out) {
 	for (let x = 0; x < line_heights.length; x++) {
 		draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
 		if (config.ENABLE_LINE_THICKNESS_HACK) {
@@ -1750,61 +1748,79 @@ function draw_lines() {
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] + config.LINE_OFFSET,
 				line_radii[x],
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// Northeast
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] + config.LINE_OFFSET,
 				line_radii[x] + config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// East
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x],
 				line_radii[x] + config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// Southeast
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] - config.LINE_OFFSET,
 				line_radii[x] + config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// South
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] - config.LINE_OFFSET,
 				line_radii[x],
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// Southwest
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] - config.LINE_OFFSET,
 				line_radii[x] - config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// West
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x],
 				line_radii[x] - config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 			// Northwest
 			draw_line(g_proj_mat, g_view_mat,
 				line_heights[x] + config.LINE_OFFSET,
 				line_radii[x] - config.LINE_OFFSET,
-				line_factors[x]
+				line_factors[x],
+				scene_fade_in,
+				scene_fade_out
 			);
 		}
 	}
 }
 
-function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
+function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in, scene_fade_out) {
     let program = prog_line;
     program.bind();
 
     // Send Values to Line Shader
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
+    gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
 	gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
@@ -1814,7 +1830,6 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor) {
     gl.uniform1f(program.uniforms.line_height, height);
     gl.uniform1f(program.uniforms.line_radius, radius);
     gl.uniform1f(program.uniforms.line_factor, factor);
-    gl.uniform1f(program.uniforms.line_thickness_hack, config.ENABLE_LINE_THICKNESS_HACK ? 1 : 0);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
