@@ -90,7 +90,7 @@ let color_damage = {
 	BACKGROUND: [0.06, 0.07, .1, 1.0],
 	VINGETTE: [0.02, 0.025, .04, 1.0],
 	PARTICLE: [0.5, 0.9, 1.0, 1.0],
-	BLOCK: [0.95, 0.28, 0.28, 1.0],
+	BLOCK: [0.95, 0.35, 0.35, 1.0],
 	LOGO: [0.45, 0.82, 1.0, 1.0],
 	LINE: [1.0, 0.45, 0.45, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
@@ -772,6 +772,19 @@ let frag_vingette = `#version 300 es
 
 function main () {
 
+
+    /* Easter Egg Setup */
+
+    // Parse Paremeter
+    const urlParemeters = window.location.search;
+    if (urlParemeters == "?installation08") {
+    	config.ENABLE_DAMAGE_EASTER_EGG = true;
+    	color = color_damage;
+    } else if (urlParemeters == "?vintage") {
+    	color = color_white;
+    }
+    
+
     /* Render Preparation */
 
 	// Retrieve Canvas
@@ -830,13 +843,6 @@ function main () {
         g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
         // LookAt Parameters: camera pos, focus pos, up vector     
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
-    }
-
-    // Damage Easter Egg
-    const urlParemeters = window.location.search;
-    if (urlParemeters == "?installation08") {
-    	config.ENABLE_DAMAGE_EASTER_EGG = true;
-    	color = color_damage;
     }
 
     // Generate Loading Particles
