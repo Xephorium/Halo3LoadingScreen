@@ -59,6 +59,8 @@ let config = {
     ENABLE_LINES: true,                        // Whether to render guide lines
     ENABLE_LINE_THICKNESS_HACK: true,          // Whether to render duplicate guide lines
     ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
+    
+    ENABLE_DAMAGE_EASTER_EGG: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
@@ -73,6 +75,24 @@ let color_blue = {
 	BLOCK: [0.28, 0.678, 0.86, 1.0],
 	LOGO: [0.45, 0.82, 1.0, 1.0],
 	LINE: [0.45, 0.8, 1.0, 1.0],
+	GRID: [0.45, 0.8, 1.0, 1.0]
+}
+let color_white = {
+	BACKGROUND: [0.07, 0.07, .07, 1.0],
+	VINGETTE: [0.02, 0.02, .02, 1.0],
+	PARTICLE: [1.0, 1.0, 1.0, 1.0],
+	BLOCK: [0.6, 0.6, 0.6, 1.0],
+	LOGO: [1.0, 1.0, 1.0, 1.0],
+	LINE: [1.0, 1.0, 1.0, 1.0],
+	GRID: [1.0, 1.0, 1.0, 1.0]
+}
+let color_damage = {
+	BACKGROUND: [0.06, 0.07, .1, 1.0],
+	VINGETTE: [0.02, 0.025, .04, 1.0],
+	PARTICLE: [0.5, 0.9, 1.0, 1.0],
+	BLOCK: [0.95, 0.28, 0.28, 1.0],
+	LOGO: [0.45, 0.82, 1.0, 1.0],
+	LINE: [1.0, 0.45, 0.45, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
 }
 let color = color_blue;
@@ -394,6 +414,7 @@ let frag_particle = `#version 300 es
 		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
+		float damaged = texture(texture_data_static, uv_coord_data_frag).a;
 
         // Calculate Particle Transparency
 		vec2 location = (gl_PointCoord - 0.5) * 2.0;
@@ -405,6 +426,11 @@ let frag_particle = `#version 300 es
         	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42;
         } else {
         	alpha_final = min(alpha_final * 1.3, 0.5) * 0.95;
+        }
+
+        // Damage Easter Egg
+        if (damaged == 1.0) {
+        	alpha_final = 0.0;
         }
 
         cg_FragColor = vec4(color.x, color.y, color.z, alpha_final);
@@ -806,6 +832,13 @@ function main () {
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
     }
 
+    // Damage Easter Egg
+    const urlParemeters = window.location.search;
+    if (urlParemeters == "?installation08") {
+    	config.ENABLE_DAMAGE_EASTER_EGG = true;
+    	color = color_damage;
+    }
+
     // Generate Loading Particles
     let loadingParticleFactory = new LoadingParticleFactory(config);
 	let pa = loadingParticleFactory.generateLoadingParticles();
@@ -1069,6 +1102,7 @@ function create_ring_block_vertex_array_object (pa) {
 			let slice_angle = pa[slice_index + block].slice_angle;
 			let block_position = pa[slice_index + block].position_final;
 			let block_visibility_offset = pa[slice_index + block].wait;
+			let damaged = pa[slice_index + block].damaged;
 
 			// Add 36 Block Vertices
 			for (let v = 0; v < 36; v++) {
@@ -1087,7 +1121,16 @@ function create_ring_block_vertex_array_object (pa) {
 				FINAL_VERTICES.push(block_position[0] + vertex[0]);
 				FINAL_VERTICES.push(block_position[1] + vertex[1]);
 				FINAL_VERTICES.push(block_position[2] + vertex[2]);
-				FINAL_VERTICES.push(block_visibility_offset);
+
+				if (damaged != 1.0) {
+
+					// Add Normal Wait
+				    FINAL_VERTICES.push(block_visibility_offset);
+				} else {
+
+					// Add Damaged Wait (After Animation Loop)
+					FINAL_VERTICES.push(config.LENGTH_LOOP);
+				}
 			}
 
 			// Add 36 * 2 UV Coordinates
@@ -1499,7 +1542,7 @@ function populate_framebuffer_objects (pa) {
 		data_static.push(pa[i].wait);
 		data_static.push(pa[i].seed);
 		data_static.push(pa[i].ambient);
-		data_static.push(1);
+		data_static.push(pa[i].damaged);
 
 	}
     

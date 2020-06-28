@@ -54,7 +54,7 @@
 
     /*--- Initialization Methods ---*/
 
-    initialize_active_particle (p, slice, particle) {
+    initialize_active_particle (p, slice, particle, destroyed_slice) {
         let angular_factor_x = Math.sin(2 * Math.PI * (slice / this.config.RING_SLICES) - Math.PI / 2);
         let angular_factor_y = Math.sin(2 * Math.PI * (slice / this.config.RING_SLICES));
 
@@ -93,6 +93,12 @@
 
         // Generate Slice Angle
         p.slice_angle = 180 - ((slice / this.config.RING_SLICES) * 360);
+
+        // Damage Easter Egg
+        p.damaged = 0;
+        if (config.ENABLE_DAMAGE_EASTER_EGG && Math.random() > 0.9
+                || config.ENABLE_DAMAGE_EASTER_EGG && destroyed_slice)
+            p.damaged = 1;
     }
 
     initialize_ambient_particle (p) {
@@ -121,6 +127,7 @@
         p.wait = 0.0;
         p.seed = 0.0;
         p.ambient = 1;
+        p.damaged = 0;
     }
 
 
@@ -245,12 +252,13 @@
         new_particle.position[1] = p.position[1];
         new_particle.position[2] = -p.position[2];
 
-        // Invert Ambient Data
+        // Invert Data
         new_particle.alpha = p.alpha;
         new_particle.brightness = p.brightness;
         new_particle.wait = p.wait;
         new_particle.seed = Math.max(this.better_random(), 0.2); // Clamped to avoid unpredictable behavior at small values.
         new_particle.ambient = p.ambient;
+        new_particle.damaged = p.damaged;
         new_particle.slice_angle = -p.slice_angle;
 
         return new_particle;
@@ -275,10 +283,14 @@
         // Generate Mirrored Slices
         for (let slice = 1; slice < (this.config.RING_SLICES / 2); slice++) {
 
+            // Damage Easter Egg
+            let destroyed_slice = false;
+            if (config.ENABLE_DAMAGE_EASTER_EGG && this.better_random() > 0.66) destroyed_slice = true;
+
             // Generate Slice
             for (let particle = 0; particle < this.config.SLICE_PARTICLES; particle++) {
                 array[particle_index] = new LoadingParticle();
-                this.initialize_active_particle(array[particle_index], slice, particle);
+                this.initialize_active_particle(array[particle_index], slice, particle, destroyed_slice);
                 particle_index++;
             }
 
