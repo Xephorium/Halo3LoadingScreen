@@ -53,12 +53,14 @@ let config = {
     LINE_OFFSET: .0002,                        // Distance Between Duplicate Guide Lines
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
+    ENABLE_PARTICLES: true,
     ENABLE_PARTICLE_SCALING: true,             // Whether particle size changes based on distance from camera
     ENABLE_ALPHA_SCALING: true,                // Whether particle alpha changes based on distance from camera
     ENABLE_LOGO: true,                         // whether to render logo
     ENABLE_LINES: true,                        // Whether to render guide lines
     ENABLE_LINE_THICKNESS_HACK: true,          // Whether to render duplicate guide lines
     ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
+    ENABLE_VINGETTE: true,                     // Whether to render vingette effect
     
     ENABLE_DAMAGE_EASTER_EGG: false,
 
@@ -775,13 +777,33 @@ function main () {
 
     /* Easter Egg Setup */
 
-    // Parse Paremeter
+    // Fun Flags
     const urlParemeters = window.location.search;
-    if (urlParemeters == "?installation08") {
+    if (urlParemeters.includes("installation08")) {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
     	color = color_damage;
-    } else if (urlParemeters == "?vintage") {
+    } else if (urlParemeters.includes("vintage")) {
     	color = color_white;
+    }
+
+    // Rendering Flags
+    if (urlParemeters.includes("nologo")) {
+    	config.ENABLE_LOGO = false;
+    }
+    if (urlParemeters.includes("noparticles")) {
+    	config.ENABLE_PARTICLES = false;
+    }
+    if (urlParemeters.includes("noblocks")) {
+    	config.ENABLE_BLOCK_RENDERING = false;
+    }
+    if (urlParemeters.includes("nolines")) {
+    	config.ENABLE_LINES = false;
+    }
+    if (urlParemeters.includes("nogrid")) {
+    	config.ENABLE_BACKGROUND_GRID = false;
+    }
+    if (urlParemeters.includes("novingette")) {
+    	config.ENABLE_VINGETTE = false;
     }
     
 
@@ -925,9 +947,11 @@ function main () {
 			    1,
 			    0
 			);
-			gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
-			gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
-			gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
+			if (config.ENABLE_PARTICLES) {
+			    gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
+			    gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+			    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
+			}
         }
 
         // Perform Loop Completion Percent Calculation
@@ -950,10 +974,10 @@ function main () {
 			draw_grid(g_proj_mat, g_view_mat, 1.5, 0.75, scene_fade_in, scene_fade_out);
 			draw_grid(g_proj_mat, g_view_mat, 2.0, 0.5, scene_fade_in, scene_fade_out);
 		}
-		draw_vingette(scene_fade_in, scene_fade_out);
+		if (config.ENABLE_VINGETTE) draw_vingette(scene_fade_in, scene_fade_out);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, delay_time);
 		if (config.ENABLE_LOGO) draw_logo(scene_fade_out, delay_time);
-	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
+	    if (config.ENABLE_PARTICLES) draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
 	};
