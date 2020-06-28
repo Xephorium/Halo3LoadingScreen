@@ -23,7 +23,7 @@ let config = {
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
-	LENGTH_LOGO_WAIT: 17500,
+	LENGTH_LOGO_WAIT: 19000,
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -80,7 +80,6 @@ else config.SLICE_HEIGHT = ((config.SLICE_PARTICLES / 2) - config.SLICE_WIDTH) +
 
 let gl, canvas;
 let g_proj_mat = new Matrix4();
-let g_light_dir = new Vector3([0, 0.4, 0.6]);
 let g_model_mat = new Matrix4();
 let g_view_mat = new Matrix4();
 
