@@ -63,6 +63,7 @@ let config = {
     ENABLE_VINGETTE: true,                     // Whether to render vingette effect
     
     ENABLE_DAMAGE_EASTER_EGG: false,
+    ENABLE_LIGHT_BACKGROUND: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
@@ -79,15 +80,6 @@ let color_blue = {
 	LINE: [0.45, 0.8, 1.0, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
 }
-let color_white = {
-	BACKGROUND: [0.07, 0.07, .07, 1.0],
-	VINGETTE: [0.02, 0.02, .02, 1.0],
-	PARTICLE: [1.0, 1.0, 1.0, 1.0],
-	BLOCK: [0.6, 0.6, 0.6, 1.0],
-	LOGO: [1.0, 1.0, 1.0, 1.0],
-	LINE: [1.0, 1.0, 1.0, 1.0],
-	GRID: [1.0, 1.0, 1.0, 1.0]
-}
 let color_damage = {
 	BACKGROUND: [0.06, 0.07, .1, 1.0],
 	VINGETTE: [0.02, 0.025, .04, 1.0],
@@ -96,6 +88,33 @@ let color_damage = {
 	LOGO: [0.45, 0.82, 1.0, 1.0],
 	LINE: [1.0, 0.45, 0.45, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
+}
+let color_destiny = {
+	BACKGROUND: [0.8, 0.8, 0.8, 1.0],
+	VINGETTE: [0.02, 0.02, .02, 1.0],
+	PARTICLE: [.1, .1, .1, 1.0],
+	BLOCK: [0.1, 0.1, 0.1, 1.0],
+	LOGO: [0.1, 0.1, 0.1, 1.0],
+	LINE: [0.1, .1, .1, 1.0],
+	GRID: [0.0, 0.0, 0.0, 1.0]
+}
+let color_vintage = {
+	BACKGROUND: [0.07, 0.07, .07, 1.0],
+	VINGETTE: [0.1, 0.1, 0.1, 1.0],
+	PARTICLE: [1.0, 1.0, 1.0, 1.0],
+	BLOCK: [0.6, 0.6, 0.6, 1.0],
+	LOGO: [1.0, 1.0, 1.0, 1.0],
+	LINE: [1.0, 1.0, 1.0, 1.0],
+	GRID: [1.0, 1.0, 1.0, 1.0]
+}
+let color_white = {
+	BACKGROUND: [0.07, 0.07, .07, 1.0],
+	VINGETTE: [0.02, 0.02, .02, 1.0],
+	PARTICLE: [1.0, 1.0, 1.0, 1.0],
+	BLOCK: [0.6, 0.6, 0.6, 1.0],
+	LOGO: [1.0, 1.0, 1.0, 1.0],
+	LINE: [1.0, 1.0, 1.0, 1.0],
+	GRID: [1.0, 1.0, 1.0, 1.0]
 }
 let color = color_blue;
 
@@ -781,8 +800,13 @@ function main () {
     const urlParemeters = window.location.search;
     if (urlParemeters.includes("installation08")) {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
-    	color = color_damage;
+    	color = color_damage;	
+    } else if (urlParemeters.includes("destiny")) {
+    	config.ENABLE_LIGHT_BACKGROUND = true;
+    	color = color_destiny;
     } else if (urlParemeters.includes("vintage")) {
+    	color = color_vintage;
+    } else if (urlParemeters.includes("white")) {
     	color = color_white;
     }
 
@@ -1738,7 +1762,11 @@ function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, del
     let program = prog_blocks;
     program.bind();
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    if (config.ENABLE_LIGHT_BACKGROUND) {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    } else {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    }
     //gl.blendColor(0.51, 0.8, 1.0, 0.02);
 
     // Send Values to Block Shader
@@ -1778,7 +1806,11 @@ function draw_logo(scene_fade_out, delay_time) {
     let program = prog_logo;
     program.bind();
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    if (config.ENABLE_LIGHT_BACKGROUND) {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    } else {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    }
 
     // Send Values to Logo Shader
     gl.uniform1i(program.uniforms.logo_texture, 7);
@@ -1967,7 +1999,11 @@ function draw_particles (position, data_dynamic, data_static, pa) {
     let program = prog_particle;
     program.bind();
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    if (config.ENABLE_LIGHT_BACKGROUND) {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    } else {
+    	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    }
 
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
