@@ -28,11 +28,9 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
-	BACKGROUND_COLOR: [0.06, 0.07, .1, 1.0],
 	BACKGROUND_GRID_ALPHA: 0.055,
 	BACKGROUND_GRID_SCALE: 0.05,
 	VINGETTE_FACTOR: 0.7,
-	VINGETTE_COLOR: [0.02, 0.025, .04, 1.0],
     RING_SLICES: 1950,                         // Final = 1950
     RING_RADIUS: 3,
     AMBIENT_PARTICLES: 50000,
@@ -66,6 +64,18 @@ let config = {
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
+
+// Color Constants
+let color_blue = {
+	BACKGROUND: [0.06, 0.07, .1, 1.0],
+	VINGETTE: [0.02, 0.025, .04, 1.0],
+	PARTICLE: [0.5, 0.9, 1.0, 1.0],
+	BLOCK: [0.28, 0.678, 0.86, 1.0],
+	LOGO: [0.45, 0.82, 1.0, 1.0],
+	LINE: [0.45, 0.8, 1.0, 1.0],
+	GRID: [0.45, 0.8, 1.0, 1.0]
+}
+let color = color_blue;
 
 // Generated Global Initialization
 config.PARTICLE_SIZE = config.PARTICLE_SIZE * config.RESOLUTION_SCALE;
@@ -374,6 +384,7 @@ let frag_particle = `#version 300 es
     in vec2 uv_coord_data_frag;
     uniform sampler2D texture_data_dynamic;
     uniform sampler2D texture_data_static;
+    uniform vec4 color;
 
     // Output Variables
 	out vec4 cg_FragColor; 
@@ -383,7 +394,6 @@ let frag_particle = `#version 300 es
 		// Local Variables
 		float alpha = texture(texture_data_dynamic, uv_coord_data_frag).r;
 		float ambient = texture(texture_data_static, uv_coord_data_frag).b;
-		vec3 color = vec3(0.5, 0.9, 1.0);
 
         // Calculate Particle Transparency
 		vec2 location = (gl_PointCoord - 0.5) * 2.0;
@@ -468,6 +478,7 @@ let frag_blocks = `#version 300 es
     in float block_fade_factor_frag;
     in float block_alpha_frag;
     uniform sampler2D highlight_texture;
+    uniform vec4 color;
 
     // Output Variables
 	out vec4 cg_FragColor; 
@@ -476,7 +487,6 @@ let frag_blocks = `#version 300 es
 
 		// Local Variables
 		float highlight_alpha = texture(highlight_texture, uv_coordinate_frag).r;
-		vec3 color = vec3(0.28, 0.678, 0.86);
 
         // Calculate & Set Draw Color
         float block_alpha_final = block_alpha_frag + ((1.0 - block_highlight_factor_frag) / 33.5) * (block_fade_factor_frag * highlight_alpha * 8.5);
@@ -559,6 +569,7 @@ let frag_logo = `#version 300 es
 	in vec2 uv_coordinate_frag;
 	in float logo_alpha_frag;
 	uniform sampler2D logo_texture;
+	uniform vec4 color;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -567,7 +578,7 @@ let frag_logo = `#version 300 es
 
 		// Calculate & Set Draw Color
 		float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
-		cg_FragColor = vec4(0.45, 0.82, 1.0, logo_alpha_frag * logo_shape);
+		cg_FragColor = vec4(color.x, color.y, color.z, logo_alpha_frag * logo_shape);
     }
 `;
 
@@ -613,6 +624,7 @@ let frag_line = `#version 300 es
 
 	// Input Variables
 	in float scene_fade_out_factor_frag;
+	uniform vec4 color;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -622,7 +634,7 @@ let frag_line = `#version 300 es
 		// Calculate Line Visibility
 		float line_alpha = 0.13 * scene_fade_out_factor_frag;
 
-		cg_FragColor = vec4(0.45, 0.8, 1.0, line_alpha);
+		cg_FragColor = vec4(color.x, color.y, color.z, line_alpha);
     }
 `;
 
@@ -666,6 +678,7 @@ let frag_grid = `#version 300 es
 	in float visibility_frag;
 	in float scene_fade_in_factor_frag;
 	in float scene_fade_out_factor_frag;
+	uniform vec4 color;
 
 	// Output Variables
 	out vec4 cg_FragColor;
@@ -674,9 +687,9 @@ let frag_grid = `#version 300 es
 
         // Set Draw Color
 		cg_FragColor = vec4(
-		    0.45,
-		    0.8,
-		    1.0,
+		    color.x,
+		    color.y,
+		    color.z,
 		    alpha_frag * visibility_frag * scene_fade_in_factor_frag * scene_fade_out_factor_frag
 		);
     }
@@ -741,10 +754,10 @@ function main () {
 	// Get & Configure Rendering Context
 	gl = canvas.getContext('webgl2');
     gl.clearColor(
-        config.BACKGROUND_COLOR[0],
-        config.BACKGROUND_COLOR[1],
-        config.BACKGROUND_COLOR[2],
-        config.BACKGROUND_COLOR[3]);
+        color.BACKGROUND[0],
+        color.BACKGROUND[1],
+        color.BACKGROUND[2],
+        color.BACKGROUND[3]);
     gl.enable(gl.BLEND);
 
     // Begin Loading Textures
@@ -1670,6 +1683,7 @@ function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, del
     gl.uniform1f(program.uniforms.length_block_fade, config.LENGTH_BLOCK_FADE);
     gl.uniform1f(program.uniforms.length_block_highlight, config.LENGTH_BLOCK_HIGHLIGHT);
     gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform4fv(program.uniforms.color, color.BLOCK);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -1701,6 +1715,7 @@ function draw_logo(scene_fade_out, delay_time) {
     gl.uniform1f(program.uniforms.logo_fade, config.LENGTH_LOGO_FADE);
     gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
     gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
+    gl.uniform4fv(program.uniforms.color, color.LOGO);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -1811,6 +1826,7 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in
     gl.uniform1f(program.uniforms.line_height, height);
     gl.uniform1f(program.uniforms.line_radius, radius);
     gl.uniform1f(program.uniforms.line_factor, factor);
+    gl.uniform4fv(program.uniforms.color, color.LINE);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -1838,6 +1854,7 @@ function draw_grid(g_proj_mat, g_view_mat, scale, visibility, scene_fade_in, sce
         gl.uniform1f(program.uniforms.scale, scale);
         gl.uniform1f(program.uniforms.alpha, config.BACKGROUND_GRID_ALPHA);
         gl.uniform1f(program.uniforms.visibility, visibility);
+        gl.uniform4fv(program.uniforms.color, color.GRID);
 
 		gl.viewport(0, 0, canvas.width, canvas.height);
 
@@ -1860,7 +1877,7 @@ function draw_vingette(scene_fade_in, scene_fade_out) {
     gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
     gl.uniform1f(program.uniforms.vingette_factor, config.VINGETTE_FACTOR);
-    gl.uniform4fv(program.uniforms.vingette_color, config.VINGETTE_COLOR);
+    gl.uniform4fv(program.uniforms.vingette_color, color.VINGETTE);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
 	
@@ -1882,6 +1899,7 @@ function draw_particles (position, data_dynamic, data_static, pa) {
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
     gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
+    gl.uniform4fv(program.uniforms.color, color.PARTICLE);
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
