@@ -182,6 +182,16 @@ Data Static
   the entire grid through multiple draw calls. The result is glorious. ~150,000 lines drawn on screen
   with no framerate drop. I love this hobby.
 
+06.27.2020
+  As of two days ago, the loading screen is officially feature complete! A subtle background vingette
+  was the final touch. With all the main functionality now done and the animation hosted online, I've
+  switched my focus to artistic adjustments and optimization. In particular, there have been a plethora
+  of minor camera path improvements. It never feels quite right. I'm sure the endless edits have made a
+  mess of my commit history. That said, optimization is going to be fun. I realized today that I can start
+  pulling timing calculations out of the shader code. As is, the project determines loop completion
+  percent for either every vertex or every pixel depending on the draw call. Eliminating that massive
+  duplicate calculation ought to take a huge chunk out of the work the GPU has to do each frame.
+
 
 /*--- Resources & Factoids ---*/
 
