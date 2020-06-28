@@ -416,37 +416,8 @@ let vertex_blocks = `#version 300 es
     uniform mat4 u_proj_mat;
 	uniform mat4 u_model_mat;
 	uniform mat4 u_view_mat;
-
-    // Output Variables
-    out vec2 uv_coordinate_frag;
-    out float particle_wait;
-    out float block_vertical_factor;
-
-	void main() {
-
-        // Local Variables
-        vec4 position = vec4(vertex_position[0], vertex_position[1], vertex_position[2], 1.0);
-
-        // Calculate Vertex Position
-		gl_Position = u_proj_mat * u_view_mat * position;
-
-        // Pass Fragment Shader UV Coordinates
-        uv_coordinate_frag = uv_coordinate;
-
-		// Pass Fragment Shader Wait & Height
-		particle_wait = vertex_position[3];
-		block_vertical_factor = min(max(abs(vertex_position[1] / 0.04), 0.66) * 1.1, 1.1);
-    }
-`;
-
-let frag_blocks = `#version 300 es
-	precision highp float;
-
-    // Input Variables
-    in vec2 uv_coordinate_frag;
-    in float particle_wait;
-    in float block_vertical_factor;
-    uniform sampler2D highlight_texture;
+    uniform float scene_fade_in_factor;
+    uniform float scene_fade_out_factor;
     uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -457,39 +428,72 @@ let frag_blocks = `#version 300 es
 	uniform float length_scene_fade;
 
     // Output Variables
+    out vec2 uv_coordinate_frag;
+    out float block_highlight_factor_frag;
+    out float block_fade_factor_frag;
+    out float block_alpha_frag;
+
+	void main() {
+
+        // Local Variables
+        vec4 position = vec4(vertex_position[0], vertex_position[1], vertex_position[2], 1.0);
+        float temp = mod(time, length_start_delay + length_loop);
+		float delay_time = max(temp - length_start_delay, 0.0);
+		float particle_wait = vertex_position[3];
+		float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly + 50.0;
+		float block_vertical_factor = min(max(abs(vertex_position[1] / 0.04), 0.66) * 1.1, 1.1);
+
+        // Calculate Vertex Position
+		gl_Position = u_proj_mat * u_view_mat * position;
+
+        // Calculate Block Alpha
+        float block_alpha = 0.0;
+		if (delay_time > appearance_time) {
+
+			// Adjust Alpha for Fade In
+			block_fade_factor_frag = min((delay_time - appearance_time) / length_block_fade, 1.0);
+			block_alpha = block_fade_factor_frag * 0.05;
+
+			// Adjust Alpha for Highlight
+			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
+			block_highlight_factor_frag = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
+		}
+
+        // Pass Fragment Shader UV Coordinates
+        uv_coordinate_frag = uv_coordinate;
+
+		// Pass Fragment Shader Variables
+		block_alpha_frag = block_alpha * block_vertical_factor * scene_fade_out_factor;
+    }
+`;
+
+let frag_blocks = `#version 300 es
+	precision highp float;
+
+    // Input Variables
+    in vec2 uv_coordinate_frag;
+    in float block_highlight_factor_frag;
+    in float block_fade_factor_frag;
+    in float block_alpha_frag;
+    uniform sampler2D highlight_texture;
+
+    // Output Variables
 	out vec4 cg_FragColor; 
 
 	void main() {
 
 		// Local Variables
-		float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
-		float scene_fade_out_factor = 1.0;
 		float highlight_alpha = texture(highlight_texture, uv_coordinate_frag).r;
 		vec3 color = vec3(0.28, 0.678, 0.86);
 
-        // Calculate Block Alpha
-        float block_alpha = 0.0;
-        float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly + 50.0;
-
-        // Account for Loop Fade Out
-        if (delay_time > length_loop - length_scene_fade) {
-            scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
-        }
-
-		if (delay_time > appearance_time) {
-
-			// Adjust Alpha for Fade In
-			float block_fade_factor = min((delay_time - appearance_time) / length_block_fade, 1.0);
-			block_alpha = block_fade_factor * 0.05;
-
-			// Adjust Alpha for Highlight
-			float length_extended_highlight = length_block_highlight + (mod(time, length_loop) / length_loop) * length_block_highlight * 0.5;
-			float block_highlight_factor = min((delay_time - appearance_time) / length_extended_highlight, 1.0);
-			block_alpha += ((1.0 - block_highlight_factor) / 33.5) * (block_fade_factor * highlight_alpha * 8.5);
-		}
-
-        cg_FragColor = vec4(color.x, color.y, color.z, block_alpha * block_vertical_factor * scene_fade_out_factor);
+        // Calculate & Set Draw Color
+        float block_alpha_final = block_alpha_frag + ((1.0 - block_highlight_factor_frag) / 33.5) * (block_fade_factor_frag * highlight_alpha * 8.5);
+        cg_FragColor = vec4(
+            color.x,
+            color.y,
+            color.z,
+            block_alpha_final
+        );
 	}
 `;
 
@@ -918,7 +922,7 @@ function main () {
 			draw_grid(g_proj_mat, g_view_mat, 2.0, 0.5, scene_fade_in, scene_fade_out);
 		}
 		draw_vingette(scene_fade_in, scene_fade_out);
-		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat);
+		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out);
 		if (config.ENABLE_LOGO) draw_logo(scene_fade_out);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
@@ -1667,7 +1671,7 @@ function draw_to_framebuffer_object (fbo) {
     gl.bindVertexArray(null);
 }
 
-function draw_blocks (g_proj_mat, g_view_mat, index) {
+function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out) {
     let program = prog_blocks;
     program.bind();
 
@@ -1678,6 +1682,8 @@ function draw_blocks (g_proj_mat, g_view_mat, index) {
     gl.uniformMatrix4fv(program.uniforms.u_proj_mat, false, g_proj_mat.elements);
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1i(program.uniforms.highlight_texture, 0);
+	gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
+    gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
 	gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
