@@ -285,7 +285,7 @@
 
             // Damage Easter Egg
             let destroyed_slice = false;
-            if (config.ENABLE_DAMAGE_EASTER_EGG && this.better_random() > 0.5) destroyed_slice = true;
+            if (config.ENABLE_DAMAGE_EASTER_EGG && this.better_random() > 0.65) destroyed_slice = true;
 
             // Generate Slice
             for (let particle = 0; particle < this.config.SLICE_PARTICLES; particle++) {

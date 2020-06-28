@@ -63,10 +63,12 @@ let config = {
     ENABLE_VINGETTE: true,                     // Whether to render vingette effect
     
     ENABLE_DAMAGE_EASTER_EGG: false,
+    ENABLE_DESTINY_EASTER_EGG: false,
     ENABLE_LIGHT_BACKGROUND: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
+    TEXTURE_LOGO_DESTINY: "res/Corner Logo Destiny.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
 
@@ -101,15 +103,6 @@ let color_destiny = {
 let color_vintage = {
 	BACKGROUND: [0.07, 0.07, .07, 1.0],
 	VINGETTE: [0.1, 0.1, 0.1, 1.0],
-	PARTICLE: [1.0, 1.0, 1.0, 1.0],
-	BLOCK: [0.6, 0.6, 0.6, 1.0],
-	LOGO: [1.0, 1.0, 1.0, 1.0],
-	LINE: [1.0, 1.0, 1.0, 1.0],
-	GRID: [1.0, 1.0, 1.0, 1.0]
-}
-let color_white = {
-	BACKGROUND: [0.07, 0.07, .07, 1.0],
-	VINGETTE: [0.02, 0.02, .02, 1.0],
 	PARTICLE: [1.0, 1.0, 1.0, 1.0],
 	BLOCK: [0.6, 0.6, 0.6, 1.0],
 	LOGO: [1.0, 1.0, 1.0, 1.0],
@@ -802,12 +795,11 @@ function main () {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
     	color = color_damage;	
     } else if (urlParemeters.includes("destiny")) {
+    	config.ENABLE_DESTINY_EASTER_EGG = true;
     	config.ENABLE_LIGHT_BACKGROUND = true;
     	color = color_destiny;
     } else if (urlParemeters.includes("vintage")) {
     	color = color_vintage;
-    } else if (urlParemeters.includes("white")) {
-    	color = color_white;
     }
 
     // Rendering Flags
@@ -849,6 +841,7 @@ function main () {
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_BLOCK, 0);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO, 7);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_VINGETTE, 8);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 9);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -1813,7 +1806,8 @@ function draw_logo(scene_fade_out, delay_time) {
     }
 
     // Send Values to Logo Shader
-    gl.uniform1i(program.uniforms.logo_texture, 7);
+    if (config.ENABLE_DESTINY_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
+    else gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
     gl.uniform1f(program.uniforms.delay_time, delay_time);
     gl.uniform1f(program.uniforms.logo_wait, config.LENGTH_LOGO_WAIT);
