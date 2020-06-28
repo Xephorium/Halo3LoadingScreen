@@ -49,6 +49,7 @@ let config = {
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
     LOGO_SCALE: 0.3,                           // Logo Scale Relative to Screen Size
     LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
+    USE_LOGO_AS_ALPHA: true,                   // Whether to treat logo as simple black/white alpha mask
     LINE_RESOLUTION: 1951,                     // Points Along Ring Guide Lines (Must Be Odd)
     LINE_OFFSET: .0002,                        // Distance Between Duplicate Guide Lines
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
@@ -63,11 +64,13 @@ let config = {
     ENABLE_VINGETTE: true,                     // Whether to render vingette effect
     
     ENABLE_DAMAGE_EASTER_EGG: false,
+    ENABLE_VIRGIL_EASTER_EGG: false,
     ENABLE_DESTINY_EASTER_EGG: false,
     ENABLE_LIGHT_BACKGROUND: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
+    TEXTURE_LOGO_VIRGIL: "res/Corner Logo Superintendent.png",
     TEXTURE_LOGO_DESTINY: "res/Corner Logo Destiny.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
@@ -90,6 +93,15 @@ let color_damage = {
 	LOGO: [0.45, 0.82, 1.0, 1.0],
 	LINE: [1.0, 0.45, 0.45, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
+}
+let color_virgil = {
+	BACKGROUND: [0.07, .07, 0.07, 1.0],
+	VINGETTE: [0.02, .02, 0.02, 1.0],
+	PARTICLE: [1.0, 1.0, 1.0, 1.0],
+	BLOCK: [0.5, 0.7, 0.5, 1.0],
+	LOGO: [0.5, 0.7, 0.5, 1.0],
+	LINE: [0.5, 0.7, 0.5, 1.0],
+	GRID: [0.7, 0.9, 0.7, 1.0]
 }
 let color_destiny = {
 	BACKGROUND: [0.8, 0.8, 0.8, 1.0],
@@ -550,10 +562,12 @@ let vertex_logo = `#version 300 es
   uniform float logo_fade;
   uniform float logo_scale;
   uniform float logo_padding;
+  uniform float use_alpha;
 
   // Output Variables
   out vec2 uv_coordinate_frag;
   out float logo_alpha_frag;
+  out float use_alpha_frag;
   
   void main() {
 
@@ -590,6 +604,7 @@ let vertex_logo = `#version 300 es
 
 	// Calculate Logo Visibility
 	float logo_visibility = 0.7;
+	if (use_alpha == 1.0) logo_visibility = 1.0;
 	float logo_alpha = 0.0;
 	if (delay_time > logo_wait) {
 		float fade_in_factor = min(((delay_time - logo_wait) / logo_fade), 1.0);
@@ -599,6 +614,7 @@ let vertex_logo = `#version 300 es
     // Pass Fragment Variables
     uv_coordinate_frag = uv_coordinate;
     logo_alpha_frag = logo_alpha;
+    use_alpha_frag = use_alpha;
   }
 `;
 
@@ -608,6 +624,7 @@ let frag_logo = `#version 300 es
 	// Input Variables
 	in vec2 uv_coordinate_frag;
 	in float logo_alpha_frag;
+	in float use_alpha_frag;
 	uniform sampler2D logo_texture;
 	uniform vec4 color;
 
@@ -617,8 +634,13 @@ let frag_logo = `#version 300 es
 	void main() {
 
 		// Calculate & Set Draw Color
-		float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
-		cg_FragColor = vec4(color.x, color.y, color.z, logo_alpha_frag * logo_shape);
+		if (use_alpha_frag == 1.0) {
+		    float logo_shape = texture(logo_texture, uv_coordinate_frag).r;
+		    cg_FragColor = vec4(color.x, color.y, color.z, logo_alpha_frag * logo_shape);
+		} else {
+			vec4 texture_color = texture(logo_texture, uv_coordinate_frag).rgba;
+		    cg_FragColor = vec4(texture_color.r, texture_color.g, texture_color.b, logo_alpha_frag * texture_color.a);
+		}
     }
 `;
 
@@ -794,6 +816,10 @@ function main () {
     if (urlParemeters.includes("installation08")) {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
     	color = color_damage;	
+    } else if (urlParemeters.includes("virgil")) {
+    	config.ENABLE_VIRGIL_EASTER_EGG = true;
+    	config.USE_LOGO_AS_ALPHA = false;
+    	color = color_virgil;
     } else if (urlParemeters.includes("destiny")) {
     	config.ENABLE_DESTINY_EASTER_EGG = true;
     	config.ENABLE_LIGHT_BACKGROUND = true;
@@ -841,7 +867,8 @@ function main () {
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_BLOCK, 0);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO, 7);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_VINGETTE, 8);
-    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 9);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_VIRGIL, 9);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 10);
 
     // Set Render Resolution
 	canvas.width  = 1920 * config.RESOLUTION_SCALE;
@@ -964,11 +991,6 @@ function main () {
 			    1,
 			    0
 			);
-			if (config.ENABLE_PARTICLES) {
-			    gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
-			    gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
-			    gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
-			}
         }
 
         // Perform Loop Completion Percent Calculation
@@ -993,8 +1015,15 @@ function main () {
 		}
 		if (config.ENABLE_VINGETTE) draw_vingette(scene_fade_in, scene_fade_out);
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, delay_time);
-		if (config.ENABLE_LOGO) draw_logo(scene_fade_out, delay_time);
-	    if (config.ENABLE_PARTICLES) draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
+		if (config.ENABLE_PARTICLES) draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
+		if (config.ENABLE_LOGO) {
+			if (config.ENABLE_VIRGIL_EASTER_EGG) {
+			    draw_logo(scene_fade_out, delay_time);
+			    draw_logo(scene_fade_out, delay_time);
+			} else {
+				draw_logo(scene_fade_out, delay_time);
+			}
+		}
 
 		requestAnimationFrame(update);
 	};
@@ -1799,14 +1828,15 @@ function draw_logo(scene_fade_out, delay_time) {
     let program = prog_logo;
     program.bind();
 
-    if (config.ENABLE_LIGHT_BACKGROUND) {
+    if (config.ENABLE_LIGHT_BACKGROUND || config.ENABLE_VIRGIL_EASTER_EGG) {
     	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     } else {
     	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
     }
 
     // Send Values to Logo Shader
-    if (config.ENABLE_DESTINY_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
+    if (config.ENABLE_VIRGIL_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
+    else if (config.ENABLE_DESTINY_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 10);
     else gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
     gl.uniform1f(program.uniforms.delay_time, delay_time);
@@ -1814,6 +1844,8 @@ function draw_logo(scene_fade_out, delay_time) {
     gl.uniform1f(program.uniforms.logo_fade, config.LENGTH_LOGO_FADE);
     gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
     gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
+    if (config.USE_LOGO_AS_ALPHA) gl.uniform1f(program.uniforms.use_alpha, 1.0);
+    else gl.uniform1f(program.uniforms.use_alpha, 0.0);
     gl.uniform4fv(program.uniforms.color, color.LOGO);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
@@ -1999,6 +2031,9 @@ function draw_particles (position, data_dynamic, data_static, pa) {
     	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
     }
 
+    gl.uniformMatrix4fv(prog_particle.uniforms.u_view_mat, false, g_view_mat.elements);
+	gl.uniform3fv(prog_particle.uniforms.position_camera, camera_pos);
+	gl.uniform1f(prog_particle.uniforms.particle_scaling, config.ENABLE_PARTICLE_SCALING ? 1 : 0);
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
     gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
