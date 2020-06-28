@@ -163,11 +163,9 @@ let frag_position = `#version 300 es
 	uniform sampler2D texture_final_position;
 	uniform sampler2D texture_position;
 	uniform sampler2D texture_data_static;
-	uniform float time;
+	uniform float delay_time;
 	uniform float length_loop;
-	uniform float length_start_delay;
 	uniform float length_assembly_delay;
-	uniform float length_ring_assembly;
 	uniform float length_slice_assembly;
 	in vec2 v_coord; // UV coordinate of current point.
 
@@ -204,8 +202,6 @@ let frag_position = `#version 300 es
 		float wait = texture(texture_data_static, v_coord).r;
 		float seed = texture(texture_data_static, v_coord).g;
 		float ambient = texture(texture_data_static, v_coord).b;
-		float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
 
         if (ambient != 1.0) {
 
@@ -246,7 +242,7 @@ let frag_data = `#version 300 es
 	uniform vec3 position_camera;
 	uniform float scene_fade_in_factor;
 	uniform float scene_fade_out_factor;
-	uniform float time;
+	uniform float delay_time;
 	uniform float length_loop;
 	uniform float length_start_delay;
 	uniform float length_slice_assembly;
@@ -269,8 +265,6 @@ let frag_data = `#version 300 es
         float wait = texture(texture_data_static, v_coord).r;
         float seed = texture(texture_data_static, v_coord).g;
         float ambient = texture(texture_data_static, v_coord).b;
-		float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
 		float distance = abs(distance(position, vec4(position_camera[0], position_camera[1], position_camera[2], 1.0)));
 
         // Calculate & Set Alpha Scale
@@ -418,6 +412,7 @@ let vertex_blocks = `#version 300 es
 	uniform mat4 u_view_mat;
     uniform float scene_fade_in_factor;
     uniform float scene_fade_out_factor;
+    uniform float delay_time;
     uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -437,8 +432,6 @@ let vertex_blocks = `#version 300 es
 
         // Local Variables
         vec4 position = vec4(vertex_position[0], vertex_position[1], vertex_position[2], 1.0);
-        float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
 		float particle_wait = vertex_position[3];
 		float appearance_time = particle_wait + length_scene_fade + length_start_delay + length_slice_assembly + 50.0;
 		float block_vertical_factor = min(max(abs(vertex_position[1] / 0.04), 0.66) * 1.1, 1.1);
@@ -503,11 +496,7 @@ let vertex_logo = `#version 300 es
   in vec4 a_position;
   in vec2 uv_coordinate;
   uniform float scene_fade_out_factor;
-  uniform float time;
-  uniform float length_loop;
-  uniform float length_start_delay;
-  uniform float length_slice_assembly;
-  uniform float length_scene_fade;
+  uniform float delay_time;
   uniform float logo_wait;
   uniform float logo_fade;
   uniform float logo_scale;
@@ -550,10 +539,6 @@ let vertex_logo = `#version 300 es
         gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
     }
 
-	// Calculate Time
-	float temp = mod(time, length_start_delay + length_loop);
-	float delay_time = max(temp - length_start_delay, 0.0);
-
 	// Calculate Logo Visibility
 	float logo_visibility = 0.7;
 	float logo_alpha = 0.0;
@@ -595,12 +580,9 @@ let vertex_line = `#version 300 es
 	uniform mat4 u_view_mat;
 	uniform float scene_fade_in_factor;
 	uniform float scene_fade_out_factor;
-	uniform float time;
-	uniform float length_loop;
+	uniform float delay_time;
 	uniform float length_start_delay;
-	uniform float length_slice_assembly;
 	uniform float length_ring_assembly;
-	uniform float length_scene_fade;
 	uniform float line_height;
 	uniform float line_radius;
 	uniform float line_factor;
@@ -609,10 +591,6 @@ let vertex_line = `#version 300 es
 	out float scene_fade_out_factor_frag;
 
 	void main() {
-
-		// Calculate Time
-		float temp = mod(time, length_start_delay + length_loop);
-		float delay_time = max(temp - length_start_delay, 0.0);
 
         // Calculate Completion Factor
         float ring_assembly_factor = max((delay_time - 3.0 * length_start_delay) / length_ring_assembly, 0.0);
@@ -913,17 +891,17 @@ function main () {
         }
 
         // Render Scene
-		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
-		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static, scene_fade_in, scene_fade_out);
-		if (config.ENABLE_LINES) draw_lines(scene_fade_in, scene_fade_out);
+		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static, delay_time);
+		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static, scene_fade_in, scene_fade_out, delay_time);
+		if (config.ENABLE_LINES) draw_lines(scene_fade_in, scene_fade_out, delay_time);
 		if (config.ENABLE_BACKGROUND_GRID) {
 			draw_grid(g_proj_mat, g_view_mat, 1.0, 1.0, scene_fade_in, scene_fade_out);
 			draw_grid(g_proj_mat, g_view_mat, 1.5, 0.75, scene_fade_in, scene_fade_out);
 			draw_grid(g_proj_mat, g_view_mat, 2.0, 0.5, scene_fade_in, scene_fade_out);
 		}
 		draw_vingette(scene_fade_in, scene_fade_out);
-		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out);
-		if (config.ENABLE_LOGO) draw_logo(scene_fade_out);
+		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, delay_time);
+		if (config.ENABLE_LOGO) draw_logo(scene_fade_out, delay_time);
 	    draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 
 		requestAnimationFrame(update);
@@ -1610,7 +1588,7 @@ function create_double_framebuffer_object (w, h, internalFormat, format, type, p
 
 /*--- Draw Methods ---*/
 
-function update_particle_positions (position_initial, position_swerve, position_final, position, data_static) {
+function update_particle_positions (position_initial, position_swerve, position_final, position, data_static, delay_time) {
     let program = prog_position;
     program.bind();
 
@@ -1620,11 +1598,9 @@ function update_particle_positions (position_initial, position_swerve, position_
     gl.uniform1i(program.uniforms.texture_position, position.read.attach(4));
     gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(5));
 
-    gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.delay_time, delay_time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
-    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_assembly_delay, config.LENGTH_ASSEMBLY_DELAY);
-    gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.camera_dist_max, config.CAMERA_DIST_MAX);
     gl.uniform1f(program.uniforms.camera_dist_factor, config.CAMERA_DIST_FACTOR);
@@ -1635,7 +1611,7 @@ function update_particle_positions (position_initial, position_swerve, position_
     position.swap();
 }
 
-function update_particle_data (position, data_dynamic, data_static, scene_fade_in, scene_fade_out) {
+function update_particle_data (position, data_dynamic, data_static, scene_fade_in, scene_fade_out, delay_time) {
     let program = prog_data;
     program.bind();
 
@@ -1646,7 +1622,7 @@ function update_particle_data (position, data_dynamic, data_static, scene_fade_i
     gl.uniform3fv(program.uniforms.position_camera, camera_pos);
     gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
-    gl.uniform1f(program.uniforms.time, time);
+    gl.uniform1f(program.uniforms.delay_time, delay_time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
     gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
@@ -1673,7 +1649,7 @@ function draw_to_framebuffer_object (fbo) {
     gl.bindVertexArray(null);
 }
 
-function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out) {
+function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, delay_time) {
     let program = prog_blocks;
     program.bind();
 
@@ -1686,6 +1662,7 @@ function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out) {
 	gl.uniform1i(program.uniforms.highlight_texture, 0);
 	gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
+    gl.uniform1f(program.uniforms.delay_time, delay_time);
 	gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
@@ -1711,7 +1688,7 @@ function draw_blocks (g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out) {
 }
 
 
-function draw_logo(scene_fade_out) {
+function draw_logo(scene_fade_out, delay_time) {
     let program = prog_logo;
     program.bind();
 
@@ -1720,11 +1697,7 @@ function draw_logo(scene_fade_out) {
     // Send Values to Logo Shader
     gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
-	gl.uniform1f(program.uniforms.time, time);
-    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
-    gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
-    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
-    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
+    gl.uniform1f(program.uniforms.delay_time, delay_time);
     gl.uniform1f(program.uniforms.logo_wait, config.LENGTH_LOGO_WAIT);
     gl.uniform1f(program.uniforms.logo_fade, config.LENGTH_LOGO_FADE);
     gl.uniform1f(program.uniforms.logo_scale, config.LOGO_SCALE);
@@ -1743,7 +1716,7 @@ function draw_logo(scene_fade_out) {
     gl.bindVertexArray(null);
 }
 
-function draw_lines(scene_fade_in, scene_fade_out) {
+function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 	for (let x = 0; x < line_heights.length; x++) {
 		draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
 		if (config.ENABLE_LINE_THICKNESS_HACK) {
@@ -1754,7 +1727,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x],
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// Northeast
 			draw_line(g_proj_mat, g_view_mat,
@@ -1762,7 +1736,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] + config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// East
 			draw_line(g_proj_mat, g_view_mat,
@@ -1770,7 +1745,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] + config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// Southeast
 			draw_line(g_proj_mat, g_view_mat,
@@ -1778,7 +1754,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] + config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// South
 			draw_line(g_proj_mat, g_view_mat,
@@ -1786,7 +1763,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x],
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// Southwest
 			draw_line(g_proj_mat, g_view_mat,
@@ -1794,7 +1772,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] - config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// West
 			draw_line(g_proj_mat, g_view_mat,
@@ -1802,7 +1781,8 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] - config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 			// Northwest
 			draw_line(g_proj_mat, g_view_mat,
@@ -1810,13 +1790,14 @@ function draw_lines(scene_fade_in, scene_fade_out) {
 				line_radii[x] - config.LINE_OFFSET,
 				line_factors[x],
 				scene_fade_in,
-				scene_fade_out
+				scene_fade_out,
+				delay_time
 			);
 		}
 	}
 }
 
-function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in, scene_fade_out) {
+function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in, scene_fade_out, delay_time) {
     let program = prog_line;
     program.bind();
 
@@ -1825,12 +1806,9 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in
 	gl.uniformMatrix4fv(program.uniforms.u_view_mat, false, g_view_mat.elements);
 	gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
-	gl.uniform1f(program.uniforms.time, time);
-    gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
+	gl.uniform1f(program.uniforms.delay_time, delay_time);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
-    gl.uniform1f(program.uniforms.length_slice_assembly, config.LENGTH_SLICE_ASSEMBLY);
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
-    gl.uniform1f(program.uniforms.length_scene_fade, config.LENGTH_SCENE_FADE);
     gl.uniform1f(program.uniforms.line_height, height);
     gl.uniform1f(program.uniforms.line_radius, radius);
     gl.uniform1f(program.uniforms.line_factor, factor);
