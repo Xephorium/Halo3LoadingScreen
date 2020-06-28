@@ -244,6 +244,8 @@ let frag_data = `#version 300 es
 	uniform sampler2D texture_data_dynamic;
 	uniform sampler2D texture_data_static;
 	uniform vec3 position_camera;
+	uniform float scene_fade_in_factor;
+	uniform float scene_fade_out_factor;
 	uniform float time;
 	uniform float length_loop;
 	uniform float length_start_delay;
@@ -294,13 +296,11 @@ let frag_data = `#version 300 es
         } else if (delay_time > length_loop - length_scene_fade) {
 
 			// All Particles - Scene Fade Out
-			float scene_fade_out_factor = max((length_loop - delay_time) / length_scene_fade, 0.0);
 			alpha = ambient * scene_fade_out_factor * alpha_scale;
 
 		} else if (ambient == 1.0) {
 
 			// Ambient Particles
-			float scene_fade_in_factor = min(delay_time / length_particle_fade, 1.0);
 			alpha = scene_fade_in_factor * alpha_scale;
 
 		} else if (delay_time > wait) {
@@ -914,7 +914,7 @@ function main () {
 
         // Render Scene
 		update_particle_positions(fbo_pos_initial, fbo_pos_swerve, fbo_pos_final, fbo_pos, fbo_data_static);
-		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static);
+		update_particle_data(fbo_pos, fbo_data_dynamic, fbo_data_static, scene_fade_in, scene_fade_out);
 		if (config.ENABLE_LINES) draw_lines(scene_fade_in, scene_fade_out);
 		if (config.ENABLE_BACKGROUND_GRID) {
 			draw_grid(g_proj_mat, g_view_mat, 1.0, 1.0, scene_fade_in, scene_fade_out);
@@ -1635,7 +1635,7 @@ function update_particle_positions (position_initial, position_swerve, position_
     position.swap();
 }
 
-function update_particle_data (position, data_dynamic, data_static) {
+function update_particle_data (position, data_dynamic, data_static, scene_fade_in, scene_fade_out) {
     let program = prog_data;
     program.bind();
 
@@ -1644,6 +1644,8 @@ function update_particle_data (position, data_dynamic, data_static) {
     gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
 
     gl.uniform3fv(program.uniforms.position_camera, camera_pos);
+    gl.uniform1f(program.uniforms.scene_fade_in_factor, scene_fade_in);
+    gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
     gl.uniform1f(program.uniforms.time, time);
     gl.uniform1f(program.uniforms.length_loop, config.LENGTH_LOOP);
     gl.uniform1f(program.uniforms.length_start_delay, config.LENGTH_START_DELAY);
