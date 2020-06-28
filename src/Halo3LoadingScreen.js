@@ -70,8 +70,8 @@ let config = {
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
-    TEXTURE_LOGO_VIRGIL: "res/Corner Logo Superintendent.png",
-    TEXTURE_LOGO_DESTINY: "res/Corner Logo Destiny.png",
+    TEXTURE_LOGO_VIRGIL: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Superintendent.png",
+    TEXTURE_LOGO_DESTINY: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Destiny.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
 
@@ -104,7 +104,7 @@ let color_virgil = {
 	GRID: [0.7, 0.9, 0.7, 1.0]
 }
 let color_destiny = {
-	BACKGROUND: [0.8, 0.8, 0.8, 1.0],
+	BACKGROUND: [0.8, 0.8, 0.78, 1.0],
 	VINGETTE: [0.02, 0.02, .02, 1.0],
 	PARTICLE: [.1, .1, .1, 1.0],
 	BLOCK: [0.1, 0.1, 0.1, 1.0],
