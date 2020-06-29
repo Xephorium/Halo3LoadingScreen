@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 2.5,                               // Speed of animation
+	SPEED: 1.17,                               // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -23,7 +23,7 @@ let config = {
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
-	LENGTH_LOGO_WAIT: 19000,
+	LENGTH_LOGO_WAIT: 20000,
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
@@ -170,18 +170,18 @@ let texture_list = [];
 
 let camera_pos = [];
 let camera_pos_control_points = [
-    [-2.5, -0.2, 1.3],
-    [-2.5, 0.13, 2.9],
-    [  .7,  .18, 5.3],
-    [ 2.2,  .22,   2],
-    [ 2.5,  .18,   1]
+    [-2.5, -0.2,  1.3],
+    [-2.5, 0.11,  2.9],
+    [ 1.1,  .17, 5.4],
+    [ 2.2,  .19,  1.8],
+    [ 2.5,  .16,  1.1]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
     [   -3,    0,   0],
-    [ -2.2,  .02, 3.3],
-    [ 2.83, -.02, 3.3],
+    [ -2.15, -.04, 3.3],
+    [ 2.88, -.02, 3.3],
     [  2.9,  -.2, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
