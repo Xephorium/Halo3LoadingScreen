@@ -40,7 +40,7 @@ The following flags can also be included with any variant to scale resolution or
 <br/>
 
 ## Credits & Resources
-- This program was built atop a simple particle shader program provided by [Henry kang](http://www.cs.umsl.edu/~kang/) in [UMSL](http://www.umsl.edu/)'s Topics in Computer Graphics course. He's a brilliant instructor and kind soul.
+- This program was built atop a simple particle shader program provided by [Henry Kang](http://www.cs.umsl.edu/~kang/) in [UMSL](http://www.umsl.edu/)'s Topics in Computer Graphics course. He's a brilliant instructor and kind soul.
 - A great [interactive demo](https://ibiblio.org/e-notes/Splines/bezier.html) of DeCasteljau's bezier spline algorithm. (Adapted for this project's camera pathing.)
 
 <br/><br/>
