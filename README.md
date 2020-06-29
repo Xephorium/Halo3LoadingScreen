@@ -21,6 +21,7 @@ In the spirit of Adrien Perez's legendary easter egg in the original H3 loading 
 | installation08 |
 | virgil |
 | destiny |
+| vintage |
 
 The following flags can also be included with any variant to scale resolution or disable individual draw calls. For example: `xephorium.github.io/Halo3LoadingScreen?virgil&2k&nologo`
 
