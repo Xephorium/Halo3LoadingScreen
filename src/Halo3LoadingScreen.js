@@ -14,7 +14,7 @@
 /*--- Global Configuration ---*/
 
 let config = {
-	SPEED: 1.17,                               // Speed of animation
+	SPEED: 2.5,                               // Speed of animation
     LENGTH_LOOP:80000,                         // Length of full animation (Final = 75000)
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
@@ -27,7 +27,7 @@ let config = {
 	LENGTH_LOGO_FADE: 6000,
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
-	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
+	RESOLUTION_SCALE: 2.0,                     // Default: 1080p
 	BACKGROUND_GRID_ALPHA: 0.055,
 	BACKGROUND_GRID_SCALE: 0.05,
 	VINGETTE_FACTOR: 0.7,
@@ -172,9 +172,9 @@ let camera_pos = [];
 let camera_pos_control_points = [
     [-2.5, -0.2, 1.3],
     [-2.5, 0.13, 2.9],
-    [  .7,  .15, 5.3],
-    [ 2.2,  .25,   2],
-    [ 2.5, 0.15,   1]
+    [  .7,  .18, 5.3],
+    [ 2.2,  .22,   2],
+    [ 2.5,  .18,   1]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
@@ -182,7 +182,7 @@ let camera_focus_control_points = [
     [   -3,    0,   0],
     [ -2.2,  .02, 3.3],
     [ 2.83, -.02, 3.3],
-    [    3,  -.1, -.5]
+    [  2.9,  -.2, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 
