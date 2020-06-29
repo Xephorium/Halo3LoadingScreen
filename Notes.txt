@@ -4,36 +4,22 @@
 //////////////////////////////
 
 
-/*--- Remaining Tasks ---*/
+/*--- Tasks ---*/
 
 Core Functionality
 1. Texture particles (DONE)
 2. Camera movement (DONE)
   > Splines! (DONE)
   > Match FOV (DONE)
-3. Cubes
-4. Lines
-5. Background
+3. Cubes (DONE)
+4. Lines (DONE)
+5. Background (DONE)
+6. Vingette (DONE)
 
 Enhancements
-- Precompute swerve points
+- Precompute swerve points (DONE)
 - Free camera movement
-
-
-/*--- Animation Details ---*/
-
-Timing
-  Start Delay: 2,000ms (2s ~ 120 Blender Frames)
-  Ring Assembly: 66,000ms (66s ~ 3980 Blender Frames)
-  End Drift: 7,000ms
-  Loop Length: 75,000ms
-
-Pathing
-  Focus: Semicircle of slightly lower radius than the ring itself at the ring's vertical center. Radius decreases
-         slightly as ring approaches 1/2 completion. Final point is extended toward the back side to center the camera
-         during connection.
-  Camera: Semicircle that begins about 1/4 through one side of the ring's construction. Starts lower than ring. Speeds
-          up until rough speed match at half way point. Slows to let ring pass and rises over top, drifting down and toward center.
+- Easter eggs (Huehuehue)
 
 
 
@@ -67,7 +53,7 @@ Data Static
   R: Wait
   G: Seed
   B: Ambient
-  A: ---
+  A: Damaged
 
 
 /*--- Frame Buffer Objects ---*/
@@ -77,14 +63,6 @@ Data Static
 3. fbo_pos           // Updated by prog_position
 4. fbo_data_dynamic  // Updated by prog_data
 5. fbo_data_static   // Unchanging
-
-
-/*--- Shader Programs ---*/
-
-1. prog_position    // Updates each particle position
-2. prog_data        // Updates each particle's dynamic data
-3. prog_particle    // Renders particles
-4. prog_display     // Displays render to screen
 
 
 /*--- Cool & Useful Calculations ---*/
