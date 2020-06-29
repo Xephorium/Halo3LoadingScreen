@@ -1,7 +1,7 @@
 # Halo 3 Loading Screen
 A 4K remaster of the Halo 3 loading screen built for PC in WebGL. Were you blinded by its majesty?
 
-![Screenshot Preview]("https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Readme%20Screenshot.png")
+![Screenshot Preview](res/Readme%20Screenshot.png)
 ## 
 [Live Site](https://xephorium.github.io/Halo3LoadingScreen/)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
