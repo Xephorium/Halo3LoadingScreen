@@ -28,7 +28,7 @@ let config = {
 	LENGTH_SCENE_FADE: 1500,                   // Length of scene fade-out
 	LENGTH_CANVAS_FADE: 2000,                  // Length of canvas fade-in
 	RESOLUTION_SCALE: 1.0,                     // Default: 1080p
-	BACKGROUND_GRID_ALPHA: 0.055,
+	BACKGROUND_GRID_ALPHA: 0.045,
 	BACKGROUND_GRID_SCALE: 0.05,
 	VINGETTE_FACTOR: 0.7,
     RING_SLICES: 1950,                         // Final = 1950
@@ -95,13 +95,13 @@ let color_damage = {
 	GRID: [0.45, 0.8, 1.0, 1.0]
 }
 let color_virgil = {
-	BACKGROUND: [0.07, .07, 0.07, 1.0],
+	BACKGROUND: [0.07, 0.07, 0.07, 1.0],
 	VINGETTE: [0.02, .02, 0.02, 1.0],
 	PARTICLE: [1.0, 1.0, 1.0, 1.0],
 	BLOCK: [0.5, 0.7, 0.5, 1.0],
 	LOGO: [0.5, 0.7, 0.5, 1.0],
 	LINE: [0.5, 0.7, 0.5, 1.0],
-	GRID: [0.7, 0.9, 0.7, 1.0]
+	GRID: [1.0, 1.0, 1.0, 1.0]
 }
 let color_destiny = {
 	BACKGROUND: [0.8, 0.8, 0.78, 1.0],
@@ -388,6 +388,7 @@ let vertex_particle = `#version 300 es
 	uniform float particle_size_clamp;
 	uniform float camera_dist_max;
 	uniform float camera_dist_factor;
+	uniform float resolution_scale;
 	uniform vec3 position_camera;
 
     // Output Variables
@@ -417,6 +418,9 @@ let vertex_particle = `#version 300 es
         } else {
         	gl_PointSize += gl_PointSize * active_particle_scale;
         }
+
+        // Scale Particles Based on Resolution
+        gl_PointSize = gl_PointSize * resolution_scale;
 
         // Send UV Coordinates to Fragment Shader
         uv_coord_data_frag = uv_coord_data;
@@ -846,6 +850,13 @@ function main () {
     }
     if (urlParemeters.includes("novingette")) {
     	config.ENABLE_VINGETTE = false;
+    }
+
+    // Resolution Flags
+    if (urlParemeters.includes("2k")) {
+    	config.RESOLUTION_SCALE = 1.34;
+    } else if (urlParemeters.includes("4k")) {
+    	config.RESOLUTION_SCALE = 2.0;
     }
     
 
@@ -2037,6 +2048,7 @@ function draw_particles (position, data_dynamic, data_static, pa) {
     gl.uniform1i(program.uniforms.u_pos, position.read.attach(1));
     gl.uniform1i(program.uniforms.texture_data_dynamic, data_dynamic.read.attach(2));
     gl.uniform1i(program.uniforms.texture_data_static, data_static.read.attach(3));
+    gl.uniform1f(program.uniforms.resolution_scale, config.RESOLUTION_SCALE);
     gl.uniform4fv(program.uniforms.color, color.PARTICLE);
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
