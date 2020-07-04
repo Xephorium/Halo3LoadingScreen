@@ -66,15 +66,15 @@
         p.position_final[2] = particle_position_final[2];
 
         // Generate Initial Position
-        p.position_initial[0] = p.position_final[0] + this.min_random() * .006 * angular_factor_x;
-        p.position_initial[1] = p.position_final[1] + this.better_random() * .0005;
-        p.position_initial[2] = p.position_final[2] + this.min_random() * .006 * angular_factor_y;
+        p.position_initial[0] = p.position_final[0] + this.min_random() * .00006 * angular_factor_x;
+        p.position_initial[1] = p.position_final[1] + this.better_random() * .000004;
+        p.position_initial[2] = p.position_final[2] + this.min_random() * .00006 * angular_factor_y;
 
         // Generate Swerve Position
         let swerve_base = this.middle_point(p.position_final, p.position_initial);
-        p.position_swerve[0] = swerve_base[0] - (this.better_random() * 0.00005);
-        p.position_swerve[1] = swerve_base[1] - (this.better_random() * 0.000005);
-        p.position_swerve[2] = swerve_base[2] - (this.better_random() * 0.00005);
+        p.position_swerve[0] = swerve_base[0] - (this.better_random() * 0.0017);
+        p.position_swerve[1] = swerve_base[1] - (this.better_random() * 0.00016);
+        p.position_swerve[2] = swerve_base[2] - (this.better_random() * 0.0017);
 
         // Generate Position
         p.position[0] = p.position_initial[0];

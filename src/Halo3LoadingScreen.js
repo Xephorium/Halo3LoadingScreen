@@ -19,7 +19,7 @@ let config = {
 	LENGTH_START_DELAY: 600,                   // Time between full canvas visibility and animation start
 	LENGTH_ASSEMBLY_DELAY: 2000,               // Time between animation start and ring assembly start
 	LENGTH_RING_ASSEMBLY: 71000,               // Final = 66000
-	LENGTH_SLICE_ASSEMBLY: 21,
+	LENGTH_SLICE_ASSEMBLY: 20,
 	LENGTH_PARTICLE_FADE: 1000,                // Length of each particle's fade-in
 	LENGTH_BLOCK_FADE: 70,
 	LENGTH_BLOCK_HIGHLIGHT: 1000,
@@ -238,13 +238,12 @@ let frag_position = `#version 300 es
 
 	// 3-Point Curve Interpolator
 	// Note: Returns a position in 3D space representing a particle's location on
-	//       a smooth bezier curve between three points given factor t [0-1]. 
-	// Source: https://forum.unity.com/threads/getting-a-point-on-a-bezier-curve-given-distance.382785/ 
+	//       a smooth curve between three points given factor t [0-1]. 
 	vec4 interpolate_location(vec4 v1, vec4 v2, vec4 v3, float t) {
-         float x = (((1.0 - t) * (1.0 - t)) * v1.x) + (2.0 * t * (1.0 - t) * v2.x) + ((t * t) * v3.x);
-         float y = (((1.0 - t) * (1.0 - t)) * v1.y) + (2.0 * t * (1.0 - t) * v2.y) + ((t * t) * v3.y);
-         float z = (((1.0 - t) * (1.0 - t)) * v1.z) + (2.0 * t * (1.0 - t) * v2.z) + ((t * t) * v3.z);
-         return vec4(x, y, z, 1.0);
+		vec4 path1 = v1 * (1.0 - t) + v3 * t;
+		float middle_factor = (0.5 - abs(0.5 - t)) * 2.0;
+		vec4 path2 = path1 * (1.0 - middle_factor) + v2 * middle_factor;
+		return vec4(path2.x, path2.y, path2.z, 1.0);
 	}
 
 	void main() {
@@ -393,6 +392,7 @@ let vertex_particle = `#version 300 es
 
     // Output Variables
 	out vec2 uv_coord_data_frag;
+	out float vertical_factor_frag;
 
 	void main() {
 
@@ -400,6 +400,7 @@ let vertex_particle = `#version 300 es
 		vec4 pos = texture(u_pos, uv_coord_data); // this particle position
 		float ambient = texture(texture_data_static, uv_coord_data).b;
 		gl_Position = u_proj_mat * u_view_mat * pos;
+		vertical_factor_frag = min(max(abs(pos[1] / 0.04), 0.66) * 1.1, 1.0);
 
         // Scale Particles Based on Camera Distance
         if (particle_scaling == 1.0) {
@@ -432,6 +433,7 @@ let frag_particle = `#version 300 es
 
     // Input Variables
     in vec2 uv_coord_data_frag;
+    in float vertical_factor_frag;
     uniform sampler2D texture_data_dynamic;
     uniform sampler2D texture_data_static;
     uniform vec4 color;
@@ -453,7 +455,7 @@ let frag_particle = `#version 300 es
  		
  		// Boost Alpha
         if (ambient != 1.0) {
-        	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42;
+        	alpha_final = min(alpha_final * 6.0, 1.0) * 0.42 * vertical_factor_frag;
         } else {
         	alpha_final = min(alpha_final * 1.3, 0.5) * 0.95;
         }
@@ -857,6 +859,15 @@ function main () {
     	config.RESOLUTION_SCALE = 1.34;
     } else if (urlParemeters.includes("4k")) {
     	config.RESOLUTION_SCALE = 2.0;
+    }
+
+    // Speed Flags
+    if (urlParemeters.includes("halfspeed")) {
+    	config.SPEED = config.SPEED * 0.5;
+    } else if (urlParemeters.includes("quarterspeed")) {
+    	config.SPEED = config.SPEED * 0.25;
+    } else if (urlParemeters.includes("triplespeed")) {
+    	config.SPEED = config.SPEED * 3.0;
     }
     
 

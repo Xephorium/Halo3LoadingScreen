@@ -23,13 +23,15 @@ In the spirit of Adrien Perez's legendary easter egg in the original H3 loading 
 | destiny |
 | vintage |
 
-The following flags can also be included with any variant to scale resolution or disable individual draw calls. For example: `xephorium.github.io/Halo3LoadingScreen?virgil&2k&nologo`
+The following flags can also be included with any variant to scale resolution, adjust speed, or disable individual draw calls. For example: `xephorium.github.io/Halo3LoadingScreen?virgil&2k&halfspeed&nologo`
 
 | Render Flag | Effect |
 | :---: | :--- |
 | (no flag) | 1080p Resolution |
 | 2k | 1440p Resolution |
 | 4k | 4K Resolution |
+| halfspeed | Slows Animation to 1/2 Speed |
+| quarterspeed | Slows Animation to 1/4 Speed |
 | nologo | Disables Logo |
 | nogrid | Disables Background Grid |
 | nolines | Disables Guide Lines |
