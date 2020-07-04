@@ -170,6 +170,19 @@ Data Static
   percent for either every vertex or every pixel depending on the draw call. Eliminating that massive
   duplicate calculation ought to take a huge chunk out of the work the GPU has to do each frame.
 
+07.04.2020
+  I'm losing my mind trying to diagnose a subtle, random jitter in ring assembly particles. After replacing
+  the three-point quadratic position calculation with simple linear interpolation, the problem disappeared.
+  This led me to believe the quadratic calculation was the problem. However, building a comparable function
+  that calculated the path between three points using only linear interpolation produced the same effect. So,
+  the problem must be floating point accuracy while storing the pisitions in an image texture, right? To
+  test the theory, I removed the position FBO altogether. At this point, all position calculations are 
+  performed in real time in the particle vertex shader. Yet, the jitter remains. At least I learned that the
+  position and dynamic data FBO's were never really necessary while diagnosing this nightmare. The actual
+  position calculation is all that's left, so it must be the problem. Or, maybe random change in an input
+  to those calculations? Or some issue with the precision of operations performed in GLSL. Gonna work on
+  testing the second.
+
 
 /*--- Resources & Factoids ---*/
 
