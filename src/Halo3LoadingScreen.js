@@ -190,6 +190,15 @@ let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 let line_heights = [ 0.0842,  0.0721, 0.06,   -0.0842,  -0.0721,  -0.06  ];
 let line_radii   = [ 2.9855,  3.009,  3.0149, 2.9855,   3.009,    3.0149 ];
 let line_factors = [ 1.012,   0.973,  0.946,  1.03,   1.054,    0.982  ];
+let line_progress_control_points = [
+    [0.0],
+    [0.2],
+    [0.4],
+    [0.6],
+    [0.8],
+    [1.0]
+];
+let line_progress_interpolator = new Interpolator(line_progress_control_points);
 
 let start_time, time;
 var canvas_opacity = 0;
@@ -226,15 +235,6 @@ let frag_position = `#version 300 es
 
     // Output Variables
 	out vec4 cg_FragColor;
-
-    // Procedural Float Generator [-1, 1]
-    // Note: Consistently returns the same pseudo-random float for the same two input values.  
-	float generate_float(float value_one, float value_two) {
-	    float seed_one = 78.0;
-	    float seed_two = 13647.0;
-	    float magnitude = (mod(floor(value_one * seed_one + value_two * seed_two), 100.0) / 100.0) * 2.0 - 1.0;
-	    return magnitude;
-	}
 
 	// 3-Point Curve Interpolator
 	// Note: Returns a position in 3D space representing a particle's location on
