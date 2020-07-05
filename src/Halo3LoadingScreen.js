@@ -172,17 +172,17 @@ let camera_pos = [];
 let camera_pos_control_points = [
     [-2.5, -0.2,  1.3],
     [-2.5, 0.11,  2.9],
-    [ 1.1,  .17, 5.4],
+    [ 1.2,  .17, 5.4],
     [ 2.2,  .19,  1.8],
-    [ 2.5,  .16,  1.1]
+    [ 2.5,  .175,  1.1]
 ];
 let camera_pos_interpolator = new Interpolator(camera_pos_control_points);
 let camera_focus = [];
 let camera_focus_control_points = [
     [   -3,    0,   0],
-    [ -2.15, -.04, 3.3],
+    [ -2.1, -.04, 3.3],
     [ 2.88, -.02, 3.3],
-    [  2.9,  -.2, -.5]
+    [  2.9,  -.15, -.5]
 ];
 let camera_focus_interpolator = new Interpolator(camera_focus_control_points);
 
@@ -193,8 +193,8 @@ let line_factors = [ 1.012,   0.973,  0.946,  1.03,   1.054,    0.982  ];
 let line_progress_control_points = [
     [0.0],
     [0.2],
-    [0.4],
-    [0.6],
+    [0.42],
+    [0.59],
     [0.8],
     [1.0]
 ];
@@ -663,6 +663,7 @@ let vertex_line = `#version 300 es
 	uniform float length_ring_assembly;
 	uniform float line_height;
 	uniform float line_radius;
+	uniform float completion_factor;
 	uniform float line_factor;
 
 	// Output Variables
@@ -671,12 +672,11 @@ let vertex_line = `#version 300 es
 	void main() {
 
         // Calculate Completion Factor
-        float ring_assembly_factor = max((delay_time - 3.0 * length_start_delay) / length_ring_assembly, 0.0);
-        float completion_factor = ring_assembly_factor * line_factor;
+        float final_completion_factor = completion_factor * line_factor;
 
 		// Calculate Point Position
-		float x_pos = line_radius * -cos(3.14159265 * max(min((vertex_angle[0] / 180.0) * completion_factor, 1.0), -1.0));
-		float y_pos = line_radius *  sin(3.14159265 * max(min((vertex_angle[0] / 180.0) * completion_factor, 1.0), -1.0));
+		float x_pos = line_radius * -cos(3.14159265 * max(min((vertex_angle[0] / 180.0) * final_completion_factor, 1.0), -1.0));
+		float y_pos = line_radius *  sin(3.14159265 * max(min((vertex_angle[0] / 180.0) * final_completion_factor, 1.0), -1.0));
 		vec4 position = vec4(x_pos, line_height, y_pos, 1.0);
 
 		// Set Point Position
@@ -1884,6 +1884,10 @@ function draw_logo(scene_fade_out, delay_time) {
 }
 
 function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
+
+    let completion_factor = Math.max((delay_time - 3.0 * config.LENGTH_START_DELAY) / config.LENGTH_RING_ASSEMBLY, 0.0);
+    let factor = line_progress_interpolator.getInterpolatedInteger(completion_factor);
+
 	for (let x = 0; x < line_heights.length; x++) {
 		draw_line(g_proj_mat, g_view_mat, line_heights[x], line_radii[x], line_factors[x]);
 		if (config.ENABLE_LINE_THICKNESS_HACK) {
@@ -1895,7 +1899,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// Northeast
 			draw_line(g_proj_mat, g_view_mat,
@@ -1904,7 +1909,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// East
 			draw_line(g_proj_mat, g_view_mat,
@@ -1913,7 +1919,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// Southeast
 			draw_line(g_proj_mat, g_view_mat,
@@ -1922,7 +1929,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// South
 			draw_line(g_proj_mat, g_view_mat,
@@ -1931,7 +1939,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// Southwest
 			draw_line(g_proj_mat, g_view_mat,
@@ -1940,7 +1949,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// West
 			draw_line(g_proj_mat, g_view_mat,
@@ -1949,7 +1959,8 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 			// Northwest
 			draw_line(g_proj_mat, g_view_mat,
@@ -1958,13 +1969,14 @@ function draw_lines(scene_fade_in, scene_fade_out, delay_time) {
 				line_factors[x],
 				scene_fade_in,
 				scene_fade_out,
-				delay_time
+				delay_time,
+				factor
 			);
 		}
 	}
 }
 
-function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in, scene_fade_out, delay_time) {
+function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in, scene_fade_out, delay_time, completion) {
     let program = prog_line;
     program.bind();
 
@@ -1978,6 +1990,7 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.line_height, height);
     gl.uniform1f(program.uniforms.line_radius, radius);
+    gl.uniform1f(program.uniforms.completion_factor, completion);
     gl.uniform1f(program.uniforms.line_factor, factor);
     gl.uniform4fv(program.uniforms.color, color.LINE);
 	

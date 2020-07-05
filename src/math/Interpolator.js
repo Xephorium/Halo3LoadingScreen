@@ -23,8 +23,8 @@
         // Parse Point Values
         for (let x = 0; x < points.length; x++) {
             this.xValues[x] = points[x][0];
-            if (points[x][1] != null) this.yValues[x] = points[x][1];
-            if (points[x][2] != null) this.zValues[x] = points[x][2];
+            this.yValues[x] = points[x][1];
+            this.zValues[x] = points[x][2];
         }
     }
 
@@ -33,7 +33,7 @@
 
     
     getInterpolatedInteger(factor) {
-        this.calculateInterpolatedValue(this.xValues, factor);
+        return this.calculateInterpolatedValue(this.xValues, factor);
     }
     
     getInterpolatedPoint(factor) {
