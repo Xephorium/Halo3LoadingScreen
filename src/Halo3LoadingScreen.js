@@ -850,8 +850,10 @@ function main () {
     // Resolution Flags
     if (urlParemeters.includes("2k")) {
     	config.RESOLUTION_SCALE = 1.34;
+    	config.LINE_OFFSET = config.LINE_OFFSET * 1.2;
     } else if (urlParemeters.includes("4k")) {
     	config.RESOLUTION_SCALE = 2.0;
+    	config.LINE_OFFSET = config.LINE_OFFSET * 1.4;
     }
 
     // Speed Flags
