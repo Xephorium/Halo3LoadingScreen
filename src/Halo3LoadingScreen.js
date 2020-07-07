@@ -52,6 +52,7 @@ let config = {
     USE_LOGO_AS_ALPHA: true,                   // Whether to treat logo as simple black/white alpha mask
     LINE_RESOLUTION: 1951,                     // Points Along Ring Guide Lines (Must Be Odd)
     LINE_OFFSET: .0002,                        // Distance Between Duplicate Guide Lines
+    LINE_ALPHA: .13,
     ENABLE_BLOCK_RENDERING: true,              // Whether to render blocks
     ENABLE_DEVELOPER_CAMERA: false,            // Places camera statically perpindicular to first slice
     ENABLE_PARTICLES: true,
@@ -685,6 +686,7 @@ let frag_line = `#version 300 es
 
 	// Input Variables
 	in float scene_fade_out_factor_frag;
+    uniform float line_alpha;
 	uniform vec4 color;
 
 	// Output Variables
@@ -693,9 +695,9 @@ let frag_line = `#version 300 es
 	void main() {
 
 		// Calculate Line Visibility
-		float line_alpha = 0.13 * scene_fade_out_factor_frag;
+		float alpha = line_alpha * scene_fade_out_factor_frag;
 
-		cg_FragColor = vec4(color.x, color.y, color.z, line_alpha);
+		cg_FragColor = vec4(color.x, color.y, color.z, alpha);
     }
 `;
 
@@ -850,9 +852,13 @@ function main () {
     // Resolution Flags
     if (urlParemeters.includes("2k")) {
     	config.RESOLUTION_SCALE = 1.34;
+    	config.BACKGROUND_GRID_ALPHA = config.BACKGROUND_GRID_ALPHA * 1.34;
+    	config.LINE_ALPHA = config.LINE_ALPHA * 1.34;
     	config.LINE_OFFSET = config.LINE_OFFSET * 1.2;
     } else if (urlParemeters.includes("4k")) {
     	config.RESOLUTION_SCALE = 2.0;
+    	config.BACKGROUND_GRID_ALPHA = config.BACKGROUND_GRID_ALPHA * 2.0;
+    	config.LINE_ALPHA = config.LINE_ALPHA * 2.0;
     	config.LINE_OFFSET = config.LINE_OFFSET * 1.4;
     }
 
@@ -1985,6 +1991,7 @@ function draw_line(g_proj_mat, g_view_mat, height, radius, factor, scene_fade_in
     gl.uniform1f(program.uniforms.length_ring_assembly, config.LENGTH_RING_ASSEMBLY);
     gl.uniform1f(program.uniforms.line_height, height);
     gl.uniform1f(program.uniforms.line_radius, radius);
+    gl.uniform1f(program.uniforms.line_alpha, config.LINE_ALPHA);
     gl.uniform1f(program.uniforms.completion_factor, completion);
     gl.uniform1f(program.uniforms.line_factor, factor);
     gl.uniform4fv(program.uniforms.color, color.LINE);
