@@ -36,7 +36,7 @@ public class ObjectParser {
         /*--- Variable Declarations ---*/
 
         // Constants
-        String FILE_PATH = "C:\\Users\\Xephorium\\Home\\Projects\\3D Animation\\Blender Projects\\Halo - Loading Screen\\Background Grid.obj";
+        String FILE_PATH = "C:\\Users\\Xephorium\\Home\\Projects\\3D Animation\\Blender Projects\\Halo - Loading Screen\\Background Grid 2.obj";
 
         // Variables
         ArrayList<String> fileLines = new ArrayList<>();
