@@ -6,8 +6,6 @@ A 4K remaster of the Halo 3 loading screen built in WebGL.
 [Live Site](https://xephorium.github.io/Halo3LoadingScreen/)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [YouTube Loop](https://youtu.be/isHpphVyQAg)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-Wallpaper Engine
 
 <br/>
 
