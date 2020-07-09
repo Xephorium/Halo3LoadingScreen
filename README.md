@@ -11,19 +11,9 @@ A 4K remaster of the Halo 3 loading screen built in WebGL.
 
 <br/>
 
-## Variants
+## Render Options
 
-In the spirit of Adrien Perez's legendary easter egg in the original H3 loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), this remaster has a few fun variants. Each can be accessed by appending one of the following flags to the URL. For example: `xephorium.github.io/Halo3LoadingScreen?virgil`
-
-| Screen Variants |
-| :---: |
-| (no flag - default) |
-| installation08 |
-| virgil |
-| destiny |
-| vintage |
-
-The following flags can also be included with any variant to scale resolution, adjust speed, or disable individual draw calls. For example: `xephorium.github.io/Halo3LoadingScreen?virgil&2k&halfspeed&nologo`
+Since this animation runs in real time, it supports a number of neat rendering options! The following flags can be appended to the URL to scale resolution, adjust speed, or disable individual draw calls. For example: `xephorium.github.io/Halo3LoadingScreen?2k&halfspeed&nologo`
 
 | Render Flag | Effect |
 | :---: | :--- |
@@ -38,6 +28,32 @@ The following flags can also be included with any variant to scale resolution, a
 | noblocks | Disables Blocks |
 | noparticles | Disables Particles |
 | novingette | Disables Vingette Effect |
+
+<br/>
+
+## Variants
+
+In the spirit of Adrien Perez's legendary easter egg in the original H3 loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), the loop also has a few fun variants. Each can be accessed with the following flags. For example: `xephorium.github.io/Halo3LoadingScreen?installation08`
+
+| Screen Variants |
+| :---: |
+| (no flag - default) |
+| installation08 |
+| virgil |
+| destiny |
+| vintage |
+
+<br/>
+
+## UltraHD Improvements
+
+Finally, this remaster takes some creative license. After much tinkering, I found that the flurries of the original animation could become overwhelming in proper HD. So by default, particle size is slightly lowered. The background is also gently brightened to improve visual cohesion. However, both of these choices can be disabled using the following flags if you prefer the classic experience.
+
+| Render Flag | Effect |
+| :---: | :--- |
+| (no flag) | Default Settings |
+| classicbackground | Classic Black Background |
+| classicparticles | Classic Particle Scale |
 
 <br/>
 
