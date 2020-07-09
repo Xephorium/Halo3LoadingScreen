@@ -861,7 +861,9 @@ function main () {
     }
 
     // Resolution Flags
-    if (urlParemeters.includes("2k")) {
+    if (urlParemeters.includes("sd")) {
+    	config.RESOLUTION_SCALE = 0.67;
+    } else if (urlParemeters.includes("2k")) {
     	config.RESOLUTION_SCALE = 1.34;
     	config.BACKGROUND_GRID_ALPHA = config.BACKGROUND_GRID_ALPHA * 1.34;
     	config.LINE_ALPHA = config.LINE_ALPHA * 1.34;
