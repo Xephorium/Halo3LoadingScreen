@@ -813,19 +813,23 @@ function main () {
     /* Easter Egg Setup */
 
     // Fun Flags
+    let classicBackgroundDisabled = false;
     const urlParemeters = window.location.search;
     if (urlParemeters.includes("installation08")) {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
     	color = color_damage;	
     } else if (urlParemeters.includes("virgil")) {
+    	classicBackgroundDisabled = true;
     	config.ENABLE_VIRGIL_EASTER_EGG = true;
     	config.USE_LOGO_AS_ALPHA = false;
     	color = color_virgil;
     } else if (urlParemeters.includes("destiny")) {
+    	classicBackgroundDisabled = true;
     	config.ENABLE_DESTINY_EASTER_EGG = true;
     	config.ENABLE_LIGHT_BACKGROUND = true;
     	color = color_destiny;
     } else if (urlParemeters.includes("vintage")) {
+    	classicBackgroundDisabled = true;
     	color = color_vintage;
     }
 
@@ -847,6 +851,13 @@ function main () {
     }
     if (urlParemeters.includes("novingette")) {
     	config.ENABLE_VINGETTE = false;
+    }
+    if (urlParemeters.includes("classicbackground") && !classicBackgroundDisabled) {
+    	color.BACKGROUND = [0, 0, 0, 0];
+    	color.VINGETTE = [0, 0, 0, 0];
+    }
+    if (urlParemeters.includes("classicparticles")) {
+    	config.PARTICLE_SIZE = 2.5;
     }
 
     // Resolution Flags
