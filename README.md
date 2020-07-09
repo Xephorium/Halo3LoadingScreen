@@ -17,6 +17,7 @@ Since this animation runs in real time, it supports a number of neat rendering o
 
 | Render Flag | Effect |
 | :---: | :--- |
+| sd | 720p Resolution |
 | (no flag) | 1080p Resolution |
 | 2k | 1440p Resolution |
 | 4k | 4K Resolution |
