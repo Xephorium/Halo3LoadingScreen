@@ -31,29 +31,29 @@ Since this animation runs in real time, it supports a number of neat rendering o
 
 <br/>
 
-## Variants
-
-In the spirit of Adrien Perez's legendary easter egg in the original H3 loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), the loop also has a few fun variants. Each can be accessed with the following flags. For example: `xephorium.github.io/Halo3LoadingScreen?installation08`
-
-| Screen Variants |
-| :---: |
-| (no flag - default) |
-| installation08 |
-| virgil |
-| destiny |
-| vintage |
-
-<br/>
-
 ## UltraHD Improvements
 
-Finally, this remaster takes some creative license. After much tinkering, I found that the flurries of the original animation could become overwhelming in proper HD. So by default, particle size is slightly lowered. The background is also gently brightened to improve visual cohesion. However, both of these choices can be disabled using the following flags if you prefer the classic experience.
+This remaster takes some creative license. After much tinkering, I found that the flurries of the original animation could become overwhelming in proper HD. So by default, particle size is slightly lowered. The background is also gently brightened to improve visual cohesion. That said, both of these artistic choices can be disabled using the following flags if you prefer the classic experience. For example: `xephorium.github.io/Halo3LoadingScreen?classicbackground&classicparticles`
 
 | Render Flag | Effect |
 | :---: | :--- |
 | (no flag) | Default Settings |
 | classicbackground | Classic Black Background |
 | classicparticles | Classic Particle Scale |
+
+<br/>
+
+## Variants
+
+Finally, in the spirit of Adrien Perez's legendary easter egg within the original H3 loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), this loop has a few fun variants. Each can be accessed with the following flags.
+
+| Variants |
+| :---: |
+| (no flag - default) |
+| installation08 |
+| virgil |
+| destiny |
+| vintage |
 
 <br/>
 
