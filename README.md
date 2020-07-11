@@ -39,7 +39,6 @@ This remaster takes some creative license. After much tinkering, I found that th
 
 | Render Flag | Effect |
 | :---: | :--- |
-| (no flag) | Default Settings |
 | classicbackground | Classic Black Background |
 | classicparticles | Classic Particle Scale |
 
@@ -51,7 +50,6 @@ Finally, in the spirit of Adrien Perez's legendary easter egg within the origina
 
 | Variants |
 | :---: |
-| (no flag - default) |
 | installation08 |
 | virgil |
 | destiny |
