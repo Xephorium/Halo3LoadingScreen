@@ -47,6 +47,7 @@ let config = {
     PARTICLE_SIZE_CLAMP: false,                // Whether to clamp max particle size when particle scaling enabled
     CAMERA_DIST_MAX: 14,                       // Maximum distance particles are expected to be from camera
     CAMERA_DIST_FACTOR: 1.65,                  // Multiplier for camera-position dependent effects
+    CAMERA_FOV: 50,
     LOGO_SCALE: 0.3,                           // Logo Scale Relative to Screen Size
     LOGO_PADDING: 0.2,                         // Logo Padding Relative to Screen Size
     USE_LOGO_AS_ALPHA: true,                   // Whether to treat logo as simple black/white alpha mask
@@ -63,6 +64,7 @@ let config = {
     ENABLE_LINE_THICKNESS_HACK: true,          // Whether to render duplicate guide lines
     ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
     ENABLE_VINGETTE: true,                     // Whether to render vingette effect
+    ENABLE_ULTRAWIDE: false,                   // Whether to render in ultrawide aspect ratio
     
     ENABLE_DAMAGE_EASTER_EGG: false,
     ENABLE_VIRGIL_EASTER_EGG: false,
@@ -563,6 +565,7 @@ let vertex_logo = `#version 300 es
   uniform float logo_scale;
   uniform float logo_padding;
   uniform float use_alpha;
+  uniform float ultrawide;
 
   // Output Variables
   out vec2 uv_coordinate_frag;
@@ -574,32 +577,57 @@ let vertex_logo = `#version 300 es
     // Local Variables
     float padding_vert = logo_padding;
     float padding_horiz = logo_padding * .562;
+    if (ultrawide == 1.0) {
+    	padding_vert = logo_padding * .75;
+    	padding_horiz = logo_padding * .75 * .42857;
+    }
 
     // Calculate Vertex Position
     if (a_position.x == -1.0 && a_position.y == -1.0) {
 
     	// Bottom Left
-        gl_Position = a_position + vec4((2.0 - (2.0 * logo_scale + padding_horiz)), padding_vert, 0.0, 0.0);
+    	if (ultrawide == 1.0) {
+            gl_Position = a_position + vec4((2.0 - ((2.0 * logo_scale * 0.762) + padding_horiz)), padding_vert, 0.0, 0.0);
+    	} else {
+            gl_Position = a_position + vec4((2.0 - (2.0 * logo_scale + padding_horiz)), padding_vert, 0.0, 0.0);
+    	}
 
     } else if (a_position.x == -1.0 && a_position.y == 1.0) {
 
         // Top Left
-        gl_Position = a_position + vec4(
-            (2.0 - (2.0 * logo_scale + padding_horiz)),
-            -(2.0 - (2.0 * logo_scale + padding_vert)),
-            0.0, 
-            0.0
-        );
+        if (ultrawide == 1.0) {
+            gl_Position = a_position + vec4(
+				(2.0 - ((2.0 * logo_scale * 0.762) + padding_horiz)),
+				-(2.0 - (2.0 * logo_scale + padding_vert)),
+				0.0, 
+				0.0
+			);
+    	} else {
+			gl_Position = a_position + vec4(
+				(2.0 - (2.0 * logo_scale + padding_horiz)),
+				-(2.0 - (2.0 * logo_scale + padding_vert)),
+				0.0, 
+				0.0
+			);
+    	}
 
     } else if (a_position.x == 1.0 && a_position.y == 1.0) {
 
         // Top Right
-        gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);
+        if (ultrawide == 1.0) {
+            gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);    
+    	} else {
+            gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);
+    	}
     
     } else if (a_position.x == 1.0 && a_position.y == -1.0) {
 
     	// Bottom Right
-        gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
+    	if (ultrawide == 1.0) {
+    		gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
+    	} else {
+            gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
+    	}
     }
 
 	// Calculate Logo Visibility
@@ -861,6 +889,9 @@ function main () {
     }
 
     // Resolution Flags
+    if (urlParemeters.includes("ultrawide")) {
+    	config.ENABLE_ULTRAWIDE = true;
+    }
     if (urlParemeters.includes("sd")) {
     	config.RESOLUTION_SCALE = 0.67;
     } else if (urlParemeters.includes("2k")) {
@@ -907,8 +938,15 @@ function main () {
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 10);
 
     // Set Render Resolution
-	canvas.width  = 1920 * config.RESOLUTION_SCALE;
-    canvas.height = 1080 * config.RESOLUTION_SCALE;
+    if (config.ENABLE_ULTRAWIDE) {
+    	canvas.width  = 2520 * config.RESOLUTION_SCALE;
+        canvas.height = 1080 * config.RESOLUTION_SCALE;
+        canvas.classList.add("ultrawide");
+        config.CAMERA_FOV = 47.5;
+    } else {
+        canvas.width  = 1920 * config.RESOLUTION_SCALE;
+        canvas.height = 1080 * config.RESOLUTION_SCALE;	
+    }
 
     // Create Rendering Programs
 	prog_position = new GLProgram(vertex_display, frag_position);
@@ -930,7 +968,7 @@ function main () {
         camera_pos[2] = 0.1;  //4.9
 
         // Define Developer Camera View Matrix
-    	g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
+    	g_proj_mat.setPerspective(config.CAMERA_FOV, canvas.width/canvas.height, .02, 10000);
     	// LookAt Parameters: camera pos, focus pos, up vector      
         g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], -3, 0.05, 0, 0, 1, 0);
 
@@ -942,7 +980,7 @@ function main () {
         camera_pos[2] = 0;
 
 	    // Define Standard View Matrix
-        g_proj_mat.setPerspective(50, canvas.width/canvas.height, .02, 10000);
+        g_proj_mat.setPerspective(config.CAMERA_FOV, canvas.width/canvas.height, .02, 10000);
         // LookAt Parameters: camera pos, focus pos, up vector     
 	    g_view_mat.setLookAt(camera_pos[0], camera_pos[1], camera_pos[2], 0, 0, 0, 0, 1, 0);
     }
@@ -1882,6 +1920,7 @@ function draw_logo(scene_fade_out, delay_time) {
     gl.uniform1f(program.uniforms.logo_padding, config.LOGO_PADDING);
     if (config.USE_LOGO_AS_ALPHA) gl.uniform1f(program.uniforms.use_alpha, 1.0);
     else gl.uniform1f(program.uniforms.use_alpha, 0.0);
+    gl.uniform1f(program.uniforms.ultrawide, config.ENABLE_ULTRAWIDE ? 1 : 0);
     gl.uniform4fv(program.uniforms.color, color.LOGO);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
