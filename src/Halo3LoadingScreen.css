@@ -23,7 +23,14 @@ canvas {
     width: 100vw; 
     height: 42.857vw;     /* height/width = 9/21 = .42857 */
     max-height: 100vh;
-    max-width: 233.34vh; /* width/height = 21/9 = 2.3334 */
+    max-width: 233.34vh;  /* width/height = 21/9 = 2.3334 */
+}
+
+.megawide {
+    width: 100vw; 
+    height: 39.130vw;     /* height/width = 9/23 = .39130 */
+    max-height: 100vh;
+    max-width: 255.55vh;  /* width/height = 23/9 = 2.55555 */
 }
 
 #loading {

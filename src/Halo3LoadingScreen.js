@@ -64,7 +64,8 @@ let config = {
     ENABLE_LINE_THICKNESS_HACK: true,          // Whether to render duplicate guide lines
     ENABLE_BACKGROUND_GRID: true,              // Whether to render background grid
     ENABLE_VINGETTE: true,                     // Whether to render vingette effect
-    ENABLE_ULTRAWIDE: false,                   // Whether to render in ultrawide aspect ratio
+    ENABLE_ULTRAWIDE: false,                   // Whether to render in ultrawide (21:9) aspect ratio
+    ENABLE_MEGAWIDE: false,                    // Whether to render in ultrawide (23:9) aspect ratio
     
     ENABLE_DAMAGE_EASTER_EGG: false,
     ENABLE_VIRGIL_EASTER_EGG: false,
@@ -566,6 +567,7 @@ let vertex_logo = `#version 300 es
   uniform float logo_padding;
   uniform float use_alpha;
   uniform float ultrawide;
+  uniform float megawide;
 
   // Output Variables
   out vec2 uv_coordinate_frag;
@@ -577,57 +579,42 @@ let vertex_logo = `#version 300 es
     // Local Variables
     float padding_vert = logo_padding;
     float padding_horiz = logo_padding * .562;
+    float ratio_factor = 1.0;
     if (ultrawide == 1.0) {
     	padding_vert = logo_padding * .75;
     	padding_horiz = logo_padding * .75 * .42857;
+    	ratio_factor = 0.762;
+    } else if (megawide == 1.0) {
+    	padding_vert = logo_padding * .75;
+    	padding_horiz = logo_padding * .75 * .39130;
+    	ratio_factor = 0.7;
     }
 
     // Calculate Vertex Position
     if (a_position.x == -1.0 && a_position.y == -1.0) {
 
     	// Bottom Left
-    	if (ultrawide == 1.0) {
-            gl_Position = a_position + vec4((2.0 - ((2.0 * logo_scale * 0.762) + padding_horiz)), padding_vert, 0.0, 0.0);
-    	} else {
-            gl_Position = a_position + vec4((2.0 - (2.0 * logo_scale + padding_horiz)), padding_vert, 0.0, 0.0);
-    	}
+    	gl_Position = a_position + vec4((2.0 - ((2.0 * logo_scale * ratio_factor) + padding_horiz)), padding_vert, 0.0, 0.0);
 
     } else if (a_position.x == -1.0 && a_position.y == 1.0) {
 
         // Top Left
-        if (ultrawide == 1.0) {
-            gl_Position = a_position + vec4(
-				(2.0 - ((2.0 * logo_scale * 0.762) + padding_horiz)),
-				-(2.0 - (2.0 * logo_scale + padding_vert)),
-				0.0, 
-				0.0
-			);
-    	} else {
-			gl_Position = a_position + vec4(
-				(2.0 - (2.0 * logo_scale + padding_horiz)),
-				-(2.0 - (2.0 * logo_scale + padding_vert)),
-				0.0, 
-				0.0
-			);
-    	}
+        gl_Position = a_position + vec4(
+			(2.0 - ((2.0 * logo_scale * ratio_factor) + padding_horiz)),
+			-(2.0 - (2.0 * logo_scale + padding_vert)),
+			0.0, 
+			0.0
+		);
 
     } else if (a_position.x == 1.0 && a_position.y == 1.0) {
 
         // Top Right
-        if (ultrawide == 1.0) {
-            gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);    
-    	} else {
-            gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);
-    	}
+        gl_Position = a_position + vec4(-padding_horiz, -(2.0 - (2.0 * logo_scale + padding_vert)), 0.0, 0.0);
     
     } else if (a_position.x == 1.0 && a_position.y == -1.0) {
 
     	// Bottom Right
-    	if (ultrawide == 1.0) {
-    		gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
-    	} else {
-            gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
-    	}
+    	gl_Position = a_position + vec4(-padding_horiz, padding_vert, 0.0, 0.0);
     }
 
 	// Calculate Logo Visibility
@@ -891,6 +878,8 @@ function main () {
     // Resolution Flags
     if (urlParemeters.includes("ultrawide")) {
     	config.ENABLE_ULTRAWIDE = true;
+    } else if (urlParemeters.includes("megawide")) {
+    	config.ENABLE_MEGAWIDE = true;
     }
     if (urlParemeters.includes("sd")) {
     	config.RESOLUTION_SCALE = 0.67;
@@ -943,6 +932,11 @@ function main () {
         canvas.height = 1080 * config.RESOLUTION_SCALE;
         canvas.classList.add("ultrawide");
         config.CAMERA_FOV = 47.5;
+    } else if (config.ENABLE_MEGAWIDE) {
+    	canvas.width  = 2760 * config.RESOLUTION_SCALE;
+        canvas.height = 1080 * config.RESOLUTION_SCALE;
+        canvas.classList.add("megawide");
+        config.CAMERA_FOV = 46.5;
     } else {
         canvas.width  = 1920 * config.RESOLUTION_SCALE;
         canvas.height = 1080 * config.RESOLUTION_SCALE;	
@@ -1921,6 +1915,7 @@ function draw_logo(scene_fade_out, delay_time) {
     if (config.USE_LOGO_AS_ALPHA) gl.uniform1f(program.uniforms.use_alpha, 1.0);
     else gl.uniform1f(program.uniforms.use_alpha, 0.0);
     gl.uniform1f(program.uniforms.ultrawide, config.ENABLE_ULTRAWIDE ? 1 : 0);
+    gl.uniform1f(program.uniforms.megawide, config.ENABLE_MEGAWIDE ? 1 : 0);
     gl.uniform4fv(program.uniforms.color, color.LOGO);
 	
 	gl.viewport(0, 0, canvas.width, canvas.height);
