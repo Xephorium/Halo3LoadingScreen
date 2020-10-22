@@ -586,8 +586,8 @@ let vertex_logo = `#version 300 es
     	ratio_factor = 0.762;
     } else if (megawide == 1.0) {
     	padding_vert = logo_padding * .75;
-    	padding_horiz = logo_padding * .75 * .39130;
-    	ratio_factor = 0.7;
+    	padding_horiz = logo_padding * .75 * .28125;
+    	ratio_factor = 0.49;
     }
 
     // Calculate Vertex Position
@@ -933,10 +933,10 @@ function main () {
         canvas.classList.add("ultrawide");
         config.CAMERA_FOV = 47.5;
     } else if (config.ENABLE_MEGAWIDE) {
-    	canvas.width  = 2760 * config.RESOLUTION_SCALE;
+    	canvas.width  = 3840 * config.RESOLUTION_SCALE;
         canvas.height = 1080 * config.RESOLUTION_SCALE;
         canvas.classList.add("megawide");
-        config.CAMERA_FOV = 46.5;
+        config.CAMERA_FOV = 45.2;
     } else {
         canvas.width  = 1920 * config.RESOLUTION_SCALE;
         canvas.height = 1080 * config.RESOLUTION_SCALE;	

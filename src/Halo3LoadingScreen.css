@@ -28,9 +28,9 @@ canvas {
 
 .megawide {
     width: 100vw; 
-    height: 39.130vw;     /* height/width = 9/23 = .39130 */
+    height: 28.125vw;     /* height/width = 9/32 = .28125 */
     max-height: 100vh;
-    max-width: 255.55vh;  /* width/height = 23/9 = 2.55555 */
+    max-width: 355.55vh;  /* width/height = 32/9 = 3.55555 */
 }
 
 #loading {

@@ -22,7 +22,7 @@ Since this animation runs in real time, it supports a number of neat rendering o
 | 2k | 1440p Resolution |
 | 4k | 4K Resolution |
 | ultrawide | 21:9 Aspect Ratio |
-| megawide | 23:9 Aspect Ratio |
+| megawide | 32:9 Aspect Ratio |
 | halfspeed | Slows Animation to 1/2 Speed |
 | quarterspeed | Slows Animation to 1/4 Speed |
 | nologo | Disables Logo |
