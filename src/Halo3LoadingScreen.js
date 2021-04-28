@@ -68,13 +68,13 @@ let config = {
     ENABLE_MEGAWIDE: false,                    // Whether to render in ultrawide (23:9) aspect ratio
     
     ENABLE_DAMAGE_EASTER_EGG: false,
-    ENABLE_VIRGIL_EASTER_EGG: false,
+    ENABLE_VERGIL_EASTER_EGG: false,
     ENABLE_DESTINY_EASTER_EGG: false,
     ENABLE_LIGHT_BACKGROUND: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
-    TEXTURE_LOGO_VIRGIL: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Superintendent.png",
+    TEXTURE_LOGO_VERGIL: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Superintendent.png",
     TEXTURE_LOGO_DESTINY: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Destiny.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
@@ -98,7 +98,7 @@ let color_damage = {
 	LINE: [1.0, 0.45, 0.45, 1.0],
 	GRID: [0.45, 0.8, 1.0, 1.0]
 }
-let color_virgil = {
+let color_vergil = {
 	BACKGROUND: [0.07, 0.07, 0.07, 1.0],
 	VINGETTE: [0.02, .02, 0.02, 1.0],
 	PARTICLE: [1.0, 1.0, 1.0, 1.0],
@@ -833,11 +833,11 @@ function main () {
     if (urlParemeters.includes("installation08")) {
     	config.ENABLE_DAMAGE_EASTER_EGG = true;
     	color = color_damage;	
-    } else if (urlParemeters.includes("virgil")) {
+    } else if (urlParemeters.includes("vergil")) {
     	classicBackgroundDisabled = true;
-    	config.ENABLE_VIRGIL_EASTER_EGG = true;
+    	config.ENABLE_VERGIL_EASTER_EGG = true;
     	config.USE_LOGO_AS_ALPHA = false;
-    	color = color_virgil;
+    	color = color_vergil;
     } else if (urlParemeters.includes("destiny")) {
     	classicBackgroundDisabled = true;
     	config.ENABLE_DESTINY_EASTER_EGG = true;
@@ -923,7 +923,7 @@ function main () {
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_BLOCK, 0);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO, 7);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_VINGETTE, 8);
-    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_VIRGIL, 9);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_VERGIL, 9);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 10);
 
     // Set Render Resolution
@@ -1085,7 +1085,7 @@ function main () {
 		if (config.ENABLE_BLOCK_RENDERING) draw_blocks(g_proj_mat, g_view_mat, scene_fade_in, scene_fade_out, delay_time);
 		if (config.ENABLE_PARTICLES) draw_particles(fbo_pos, fbo_data_dynamic, fbo_data_static, pa);
 		if (config.ENABLE_LOGO) {
-			if (config.ENABLE_VIRGIL_EASTER_EGG) {
+			if (config.ENABLE_VERGIL_EASTER_EGG) {
 			    draw_logo(scene_fade_out, delay_time);
 			    draw_logo(scene_fade_out, delay_time);
 			} else {
@@ -1896,14 +1896,14 @@ function draw_logo(scene_fade_out, delay_time) {
     let program = prog_logo;
     program.bind();
 
-    if (config.ENABLE_LIGHT_BACKGROUND || config.ENABLE_VIRGIL_EASTER_EGG) {
+    if (config.ENABLE_LIGHT_BACKGROUND || config.ENABLE_VERGIL_EASTER_EGG) {
     	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     } else {
     	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
     }
 
     // Send Values to Logo Shader
-    if (config.ENABLE_VIRGIL_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
+    if (config.ENABLE_VERGIL_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
     else if (config.ENABLE_DESTINY_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 10);
     else gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);

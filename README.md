@@ -52,7 +52,7 @@ Finally, in the spirit of Adrien Perez's legendary easter egg within the origina
 | Variants |
 | :---: |
 | installation08 |
-| virgil |
+| vergil |
 | destiny |
 | vintage |
 
