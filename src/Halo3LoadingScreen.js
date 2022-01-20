@@ -856,6 +856,10 @@ function main () {
     // Rendering Flags
     if (urlParemeters.includes("nologo")) {
     	config.ENABLE_LOGO = false;
+    } else if(urlParemeters.includes("smalllogo")) {
+    	config.LOGO_SCALE = 0.25;
+    } else if(urlParemeters.includes("tinylogo")) {
+    	config.LOGO_SCALE = 0.2;
     }
     if (urlParemeters.includes("noparticles")) {
     	config.ENABLE_PARTICLES = false;

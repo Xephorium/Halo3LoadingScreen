@@ -26,6 +26,8 @@ Since this animation runs in real time, it supports a number of neat rendering o
 | halfspeed | Slows Animation to 1/2 Speed |
 | quarterspeed | Slows Animation to 1/4 Speed |
 | nologo | Disables Logo |
+| smalllogo | 80% Logo Size |
+| tinylogo | 60% Logo Size |
 | nogrid | Disables Background Grid |
 | nolines | Disables Guide Lines |
 | noblocks | Disables Blocks |
