@@ -70,12 +70,14 @@ let config = {
     ENABLE_DAMAGE_EASTER_EGG: false,
     ENABLE_VERGIL_EASTER_EGG: false,
     ENABLE_DESTINY_EASTER_EGG: false,
+    ENABLE_INFINITE_EASTER_EGG: false,
     ENABLE_LIGHT_BACKGROUND: false,
 
     TEXTURE_BLOCK: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Block%20Texture.png",
     TEXTURE_LOGO: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Bungie.png",
     TEXTURE_LOGO_VERGIL: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Superintendent.png",
     TEXTURE_LOGO_DESTINY: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Destiny.png",
+    TEXTURE_LOGO_INFINITE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Corner%20Logo%20Infinite.png",
     TEXTURE_VINGETTE: "https://raw.githubusercontent.com/Xephorium/Halo3LoadingScreen/master/res/Vingette%20Alpha.png"
 }
 
@@ -843,6 +845,9 @@ function main () {
     	config.ENABLE_DESTINY_EASTER_EGG = true;
     	config.ENABLE_LIGHT_BACKGROUND = true;
     	color = color_destiny;
+    } else if (urlParemeters.includes("infinite")) {
+    	classicBackgroundDisabled = true;
+    	config.ENABLE_INFINITE_EASTER_EGG = true;
     } else if (urlParemeters.includes("vintage")) {
     	classicBackgroundDisabled = true;
     	color = color_vintage;
@@ -925,6 +930,7 @@ function main () {
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_VINGETTE, 8);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_VERGIL, 9);
     ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_DESTINY, 10);
+    ImageLoader.loadImage(gl, texture_list, config.TEXTURE_LOGO_INFINITE, 11);
 
     // Set Render Resolution
     if (config.ENABLE_ULTRAWIDE) {
@@ -1905,6 +1911,7 @@ function draw_logo(scene_fade_out, delay_time) {
     // Send Values to Logo Shader
     if (config.ENABLE_VERGIL_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 9);
     else if (config.ENABLE_DESTINY_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 10);
+    else if (config.ENABLE_INFINITE_EASTER_EGG) gl.uniform1i(program.uniforms.logo_texture, 11);
     else gl.uniform1i(program.uniforms.logo_texture, 7);
     gl.uniform1f(program.uniforms.scene_fade_out_factor, scene_fade_out);
     gl.uniform1f(program.uniforms.delay_time, delay_time);
