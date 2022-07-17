@@ -1,5 +1,5 @@
 # Halo 3 Loading Screen
-A 4K remaster of the Halo 3 loading screen built in WebGL.
+A 4K remaster of Halo 3's loading screen built in WebGL.
 
 ![Screenshot Preview](res/Readme%20Screenshot.png)
 ## 
@@ -49,7 +49,7 @@ This remaster takes some creative license. After much tinkering, I found that th
 
 ## Variants
 
-Finally, in the spirit of Adrien Perez's legendary easter egg within the original H3 loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), this loop has a few fun variants. Each can be accessed with the following flags.
+Finally, in the spirit of Adrien Perez's legendary easter egg in Halo 3's original loading screen ([happy birthday, Lauren!](https://teambeyond.net/halo-3-loading-screen-easter-egg-discovered/)), this loop has a few fun variants. Each can be accessed with the following flags.
 
 | Variants |
 | :---: |
